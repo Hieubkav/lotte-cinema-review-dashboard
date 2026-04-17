@@ -1,7 +1,5 @@
-import { ObjectId } from 'mongodb';
-
 export interface Cinema {
-  _id?: ObjectId;
+  _id?: string;
   placeId: string;
   name?: string;
   originalUrl?: string;
@@ -20,7 +18,7 @@ export interface Cinema {
 }
 
 export interface Review {
-  _id?: ObjectId;
+  _id?: string;
   reviewId: string;
   cinemaId: string; // references Cinema.placeId
   authorName?: string;
@@ -46,7 +44,7 @@ export interface Review {
 }
 
 export interface BranchDailyMetrics {
-  _id?: ObjectId;
+  _id?: string;
   place_id: string; // references Cinema.placeId
   date: Date;
   avg_rating: number;
@@ -66,7 +64,7 @@ export interface BranchDailyMetrics {
 }
 
 export interface ScrapeSession {
-  _id?: ObjectId;
+  _id?: string;
   sessionId?: number;
   cinemaId: string; // references Cinema.placeId
   action: string;

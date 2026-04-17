@@ -37,9 +37,14 @@ export async function POST(req: Request) {
             }
           } else {
             // trigger single with potential officialOnly flag
-            const res = await bgTriggerCinema(target.url, officialOnly ? { official_only: true } : {});
-            if (res.job_id) {
-              pendingJobIds.push({ jobId: res.job_id, name: cinemaName });
+            const res = await bgTriggerCinema(target.url, {
+              ...(officialOnly ? { official_only: true } : {}),
+              placeId: target.id || target.placeId,
+              placeName: target.name,
+            });
+            const jobId = res.job_id || res.jobId;
+            if (jobId) {
+              pendingJobIds.push({ jobId, name: cinemaName });
             }
           }
         }
@@ -55,15 +60,15 @@ export async function POST(req: Request) {
               const currentStatus = statusRes.status; // pending, running, completed, failed, cancelled
               
               if (currentStatus === 'completed') {
-                 const reviewCount = statusRes.reviews_count || 0;
+                 const reviewCount = statusRes.reviews_count || statusRes.reviewsSynced || 0;
                  send({ cinema: job.name, status: 'success', message: `Hoàn tất (đồng bộ ${reviewCount} reviews)` });
               } else if (currentStatus === 'failed' || currentStatus === 'cancelled') {
                  send({ cinema: job.name, status: 'error', message: `Lỗi: ${statusRes.error_message || 'Đã bị huỷ'}` });
               } else {
                  // still running or pending
                  let msg = currentStatus === 'running' ? 'Đang thực thi...' : 'Đang đợi tới lượt...';
-                 if (statusRes.progress && statusRes.progress.phase) {
-                     msg += ` (${statusRes.progress.phase})`;
+                 if (statusRes.progress && (statusRes.progress.phase || statusRes.progress.message)) {
+                     msg += ` (${statusRes.progress.phase || statusRes.progress.message})`;
                  }
                  send({ cinema: job.name, status: 'loading', message: msg, jobId: job.jobId });
                  pendingJobIds.push(job);

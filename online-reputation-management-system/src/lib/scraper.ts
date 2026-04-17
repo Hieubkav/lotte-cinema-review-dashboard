@@ -1,10 +1,10 @@
 /**
  * scraper.ts
- * 
- * Helper functions to communicate with the FastAPI api_server.py
+ *
+ * Helper functions to communicate with Convex crawl jobs.
  */
 
-export const API_SERVER_URL = process.env.API_SERVER_URL || 'https://google-review-craw-658219259966.europe-west1.run.app';
+import { convexAction, convexQuery } from '@/lib/convex';
 
 export type SyncProgress = {
   cinema: string;
@@ -13,50 +13,66 @@ export type SyncProgress = {
   jobId?: string;
 };
 
-/**
- * Trigger scrape for all cinemas
- */
 export async function bgTriggerAllCinemas() {
-  const res = await fetch(`${API_SERVER_URL}/trigger-all`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to trigger all: ${await res.text()}`);
+  const places = await convexQuery<any[]>('places:list', {});
+  const details: Array<{ url: string; job_id?: string; status: string; error?: string }> = [];
+
+  for (const place of places) {
+    try {
+      const res = await convexAction<any>('crawlerActions:startCrawlJob', {
+        placeId: place.placeId,
+        placeName: place.name,
+        url: place.originalUrl || place.resolvedUrl || `https://maps.google.com/?q=${encodeURIComponent(place.name)}`,
+        officialOnly: false,
+      });
+      details.push({
+        url: place.originalUrl || place.resolvedUrl || '',
+        job_id: res?.jobId,
+        status: res?.status || 'completed',
+      });
+    } catch (error) {
+      const err = error as Error;
+      details.push({
+        url: place.originalUrl || place.resolvedUrl || '',
+        status: 'failed',
+        error: err.message,
+      });
+    }
   }
-  return await res.json();
+
+  return {
+    total_triggered: details.length,
+    details,
+  };
 }
 
-/**
- * Trigger scrape for a specific cinema
- */
-export async function bgTriggerCinema(url: string, overrides: Record<string, any> = {}) {
-  const res = await fetch(`${API_SERVER_URL}/scrape`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      url,
-      scrape_mode: 'update',
-      headless: true,
-      ...overrides
-    }),
+export async function bgTriggerCinema(
+  url: string,
+  overrides: Record<string, any> = {}
+) {
+  const placeId = overrides.placeId || `manual-${Math.random().toString(36).slice(2, 10)}`;
+  const placeName = overrides.placeName || overrides.name || `Cinema ${placeId.slice(-4)}`;
+
+  return await convexAction('crawlerActions:startCrawlJob', {
+    placeId,
+    placeName,
+    url,
+    officialOnly: Boolean(overrides.official_only),
   });
-  if (!res.ok) {
-    throw new Error(`Failed to trigger cinema: ${await res.text()}`);
-  }
-  return await res.json();
 }
 
-/**
- * Get job status
- */
 export async function getJobStatus(jobId: string) {
-  const res = await fetch(`${API_SERVER_URL}/jobs/${jobId}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to get job status for ${jobId}: ${await res.text()}`);
+  const job = await convexQuery<any>('crawlJobs:getByJobId', { jobId });
+  if (!job) {
+    throw new Error(`Job ${jobId} not found`);
   }
-  return await res.json();
+  return {
+    status: job.status,
+    error_message: job.error,
+    reviews_count: job.reviewsSynced || 0,
+    reviewsSynced: job.reviewsSynced || 0,
+    progress: job.message
+      ? { phase: job.message, message: job.message }
+      : undefined,
+  };
 }
