@@ -42,7 +42,7 @@ export async function POST(req: Request) {
               placeId: target.id || target.placeId,
               placeName: target.name,
             });
-            const jobId = res.job_id || res.jobId;
+            const jobId = res.jobId;
             if (jobId) {
               pendingJobIds.push({ jobId, name: cinemaName });
             }
@@ -67,8 +67,8 @@ export async function POST(req: Request) {
               } else {
                  // still running or pending
                  let msg = currentStatus === 'running' ? 'Đang thực thi...' : 'Đang đợi tới lượt...';
-                 if (statusRes.progress && (statusRes.progress.phase || statusRes.progress.message)) {
-                     msg += ` (${statusRes.progress.phase || statusRes.progress.message})`;
+                 if (statusRes.progress && (statusRes.progress.phase || statusRes.progress.stage || statusRes.progress.message)) {
+                     msg += ` (${statusRes.progress.phase || statusRes.progress.stage || statusRes.progress.message})`;
                  }
                  send({ cinema: job.name, status: 'loading', message: msg, jobId: job.jobId });
                  pendingJobIds.push(job);

@@ -186,6 +186,28 @@ class ReviewDB:
         elif current < SCHEMA_VERSION:
             self.backend.migrate(current, SCHEMA_VERSION, _MIGRATIONS)
 
+        self._ensure_places_columns()
+
+    def _ensure_places_columns(self) -> None:
+        """Self-heal legacy DBs where schema_version was bumped but columns are missing."""
+        rows = self.backend.fetchall("PRAGMA table_info(places)")
+        existing = {row["name"] for row in rows}
+
+        required = {
+            "official_total_reviews": "INTEGER DEFAULT 0",
+            "official_avg_rating": "REAL DEFAULT 0",
+            "captured_total_reviews": "INTEGER DEFAULT 0",
+            "last_sync_status": "TEXT",
+            "last_sync_error": "TEXT",
+        }
+
+        for column, ddl in required.items():
+            if column in existing:
+                continue
+            self.backend.execute(f"ALTER TABLE places ADD COLUMN {column} {ddl}")
+
+        self.backend.commit()
+
     @contextmanager
     def transaction(self):
         """Context manager for explicit write transactions."""
@@ -1088,4 +1110,5 @@ _MIGRATIONS: Dict[int, List[str]] = {
         "ALTER TABLE places ADD COLUMN last_sync_status TEXT;",
         "ALTER TABLE places ADD COLUMN last_sync_error TEXT;",
     ],
+    2: [],
 }
