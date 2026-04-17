@@ -205,6 +205,64 @@ class GoogleReviewsScraper:
             "last_modified_date": db_review.get("last_modified", ""),
         }
 
+    @staticmethod
+    def _extract_official_summary(driver: Chrome) -> Dict[str, Any]:
+        """Best-effort extraction of official rating + total reviews from current Maps place page."""
+        summary = {
+            "official_avg_rating": 0.0,
+            "official_total_reviews": 0,
+        }
+
+        try:
+            page_text = driver.find_element(By.TAG_NAME, "body").text or ""
+        except Exception:
+            page_text = ""
+
+        try:
+            candidates = driver.find_elements(By.CSS_SELECTOR, 'div[role="main"], h1, span, button')
+            texts = [c.text for c in candidates if c.text]
+            if page_text:
+                texts.insert(0, page_text)
+        except Exception:
+            texts = [page_text] if page_text else []
+
+        review_patterns = [
+            re.compile(r'([\d.,]+)\s*(reviews|ratings|đánh giá)', re.IGNORECASE),
+            re.compile(r'([\d.,]+)\s*review', re.IGNORECASE),
+        ]
+        rating_patterns = [
+            re.compile(r'\b([0-5](?:[.,]\d)?)\b'),
+        ]
+
+        for text in texts:
+            normalized = text.replace("\n", " ")
+            if summary["official_total_reviews"] == 0:
+                for pattern in review_patterns:
+                    match = pattern.search(normalized)
+                    if match:
+                        value = match.group(1).replace(".", "").replace(",", "")
+                        if value.isdigit():
+                            summary["official_total_reviews"] = int(value)
+                            break
+
+            if summary["official_avg_rating"] == 0:
+                for pattern in rating_patterns:
+                    match = pattern.search(normalized)
+                    if match:
+                        value = match.group(1).replace(",", ".")
+                        try:
+                            rating = float(value)
+                            if 0 <= rating <= 5:
+                                summary["official_avg_rating"] = rating
+                                break
+                        except ValueError:
+                            continue
+
+            if summary["official_avg_rating"] and summary["official_total_reviews"]:
+                break
+
+        return summary
+
     def setup_driver(self, headless: bool):
         """
         Set up and configure Chrome driver using SeleniumBase UC Mode.
@@ -1307,6 +1365,8 @@ class GoogleReviewsScraper:
             else:
                 seen = self.review_db.get_review_ids(place_id)
 
+            official_summary = self._extract_official_summary(driver)
+
             self.dismiss_cookies(driver)
             self.click_reviews_tab(driver)
 
@@ -1626,7 +1686,33 @@ class GoogleReviewsScraper:
                 legacy_docs = {
                     r["review_id"]: self._db_review_to_legacy(r) for r in reviews
                 }
-                runner = PostScrapeRunner(self.config)
+                self.review_db.update_place_snapshot(
+                    place_id,
+                    official_total_reviews=official_summary.get("official_total_reviews") or len(reviews),
+                    official_avg_rating=official_summary.get("official_avg_rating") or 0,
+                    captured_total_reviews=len(reviews),
+                    last_sync_status="completed",
+                    last_sync_error=None,
+                )
+                place_row = self.review_db.get_place(place_id) or {}
+                pipeline_config = dict(self.config)
+                pipeline_config["_place_snapshot"] = {
+                    "place_id": place_id,
+                    "place_name": place_row.get("place_name") or place_name,
+                    "original_url": place_row.get("original_url") or url,
+                    "resolved_url": place_row.get("resolved_url") or resolved_url,
+                    "latitude": place_row.get("latitude"),
+                    "longitude": place_row.get("longitude"),
+                    "first_seen": place_row.get("first_seen"),
+                    "last_scraped": place_row.get("last_scraped"),
+                    "total_reviews": place_row.get("official_total_reviews", place_row.get("total_reviews", 0)),
+                    "official_total_reviews": place_row.get("official_total_reviews", 0),
+                    "official_avg_rating": place_row.get("official_avg_rating", 0),
+                    "captured_total_reviews": place_row.get("captured_total_reviews", len(reviews)),
+                    "last_sync_status": place_row.get("last_sync_status") or "completed",
+                    "last_sync_error": place_row.get("last_sync_error"),
+                }
+                runner = PostScrapeRunner(pipeline_config)
                 try:
                     runner.run(legacy_docs, place_id, seen=seen)
                 finally:
@@ -1648,6 +1734,12 @@ class GoogleReviewsScraper:
         except Exception as e:
             if session_id:
                 self.review_db.end_session(session_id, "failed", error=str(e))
+            if place_id:
+                self.review_db.update_place_snapshot(
+                    place_id,
+                    last_sync_status="failed",
+                    last_sync_error=str(e),
+                )
             log.error(f"Error during scraping: {e}")
             log.error(traceback.format_exc())
             return False

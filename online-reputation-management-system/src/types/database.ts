@@ -12,6 +12,11 @@ export interface Cinema {
   lastScraped?: string;
   totalReviews?: number;
   avgRating?: number;
+  officialTotalReviews?: number;
+  officialAvgRating?: number;
+  capturedTotalReviews?: number;
+  lastSyncStatus?: string;
+  lastSyncError?: string | null;
 }
 
 export interface Review {

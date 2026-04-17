@@ -249,6 +249,35 @@ class MongoDBTask(SyncTask):
             self._storage.close()
 
 
+class MongoPlaceTask(SyncTask):
+    name = "mongodb_places"
+
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__(config)
+        self._storage = None
+
+    @property
+    def enabled(self) -> bool:
+        return self.config.get("use_mongodb", False)
+
+    def _ensure_storage(self):
+        if self._storage is None:
+            from modules.data_storage import MongoDBStorage
+            self._storage = MongoDBStorage(config=self.config)
+
+    def run(self, reviews: Dict[str, Dict[str, Any]], place_id: str) -> None:
+        place_snapshot = self.config.get("_place_snapshot")
+        if not place_snapshot:
+            log.info("Mongo place sync skipped: no place snapshot in config")
+            return
+        self._ensure_storage()
+        self._storage.write_place_snapshot(place_snapshot)
+
+    def close(self) -> None:
+        if self._storage:
+            self._storage.close()
+
+
 class JSONTask(SyncTask):
     name = "json"
 
@@ -288,6 +317,7 @@ class PostScrapeRunner:
             CleanupTask(self.config),
             CustomParamsTask(self.config),
             MongoDBTask(self.config),
+            MongoPlaceTask(self.config),
             JSONTask(self.config),
         ]
 

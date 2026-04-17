@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         // 1. Trigger jobs
         for (const target of targets) {
           const cinemaName = target.name || 'Unknown';
-          const actionMsg = officialOnly ? 'Đang cập nhật thông số nhanh...' : 'Đang đặt lịch cào dữ liệu...';
+          const actionMsg = officialOnly ? 'Đang đồng bộ snapshot official + captured...' : 'Đang đặt lịch cào dữ liệu...';
           send({ cinema: cinemaName, status: 'loading', message: actionMsg });
           
           if (!target.url) {
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
               
               if (currentStatus === 'completed') {
                  const reviewCount = statusRes.reviews_count || 0;
-                 send({ cinema: job.name, status: 'success', message: `Hoàn tất (cập nhật ${reviewCount} reviews)` });
+                 send({ cinema: job.name, status: 'success', message: `Hoàn tất (đồng bộ ${reviewCount} reviews)` });
               } else if (currentStatus === 'failed' || currentStatus === 'cancelled') {
                  send({ cinema: job.name, status: 'error', message: `Lỗi: ${statusRes.error_message || 'Đã bị huỷ'}` });
               } else {

@@ -238,6 +238,32 @@ class MongoDBStorage:
         except Exception as e:
             log.error(f"Error writing reviews to MongoDB: {e}")
 
+    def write_place_snapshot(self, place_snapshot: Dict[str, Any]) -> None:
+        """Upsert canonical place snapshot into MongoDB places collection."""
+        if not place_snapshot or not place_snapshot.get("place_id"):
+            log.warning("Skipping empty place snapshot write")
+            return
+
+        if not self.connected and not self.connect():
+            log.warning("Cannot write place snapshot - MongoDB connection failed")
+            return
+
+        try:
+            db = self.client[self.db_name]
+            places_collection = db["places"]
+
+            place_id = place_snapshot["place_id"]
+            document = {k: v for k, v in place_snapshot.items() if k != "_id"}
+
+            places_collection.update_one(
+                {"place_id": place_id},
+                {"$set": document},
+                upsert=True,
+            )
+            log.info("MongoDB: upserted place snapshot for %s", place_id)
+        except Exception as e:
+            log.error(f"Error writing place snapshot to MongoDB: {e}")
+
 
 class JSONStorage:
     """JSON file-based storage handler for Google Maps reviews"""

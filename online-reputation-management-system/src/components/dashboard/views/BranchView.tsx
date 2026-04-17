@@ -100,6 +100,15 @@ export default function BranchView({ state }: { state: DashboardState }) {
                     </span>
                 </div>
               )}
+              {activeCinema.lastSyncStatus && (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${activeCinema.lastSyncStatus === 'failed' ? 'bg-red-500' : 'bg-sky-500'}`} />
+                  <span className="text-[12px] font-medium text-tertiary truncate leading-[1.33]" style={{ letterSpacing: '-0.12px' }}>
+                    Sync status: {activeCinema.lastSyncStatus}
+                    {activeCinema.lastSyncError ? ` - ${activeCinema.lastSyncError}` : ''}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
                 <button

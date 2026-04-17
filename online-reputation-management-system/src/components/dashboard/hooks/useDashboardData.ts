@@ -34,7 +34,7 @@ export function useDashboardData(
   const [totalReviewsAvailable, setTotalReviewsAvailable] = useState<Record<string, number>>({});
   const [historicalMetrics, setHistoricalMetrics] = useState<any[]>([]);
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
-  const [officialStatsMap, setOfficialStatsMap] = useState<Record<string, { avgRating: number, totalReviews: number, capturedReviews: number }>>({});
+  const [officialStatsMap, setOfficialStatsMap] = useState<Record<string, { avgRating: number, totalReviews: number, capturedReviews: number, lastSyncStatus?: string | null, lastSyncError?: string | null }>>({});
 
   // -- Debounced States for Search Optimization --
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -61,12 +61,14 @@ export function useDashboardData(
         const res = await fetch('/api/places/official');
         const data = await res.json();
         if (data.data) {
-          const map: Record<string, { avgRating: number, totalReviews: number, capturedReviews: number }> = {};
+          const map: Record<string, { avgRating: number, totalReviews: number, capturedReviews: number, lastSyncStatus?: string | null, lastSyncError?: string | null }> = {};
           data.data.forEach((p: any) => {
             map[p.placeId] = { 
               avgRating: p.avgRating, 
               totalReviews: p.totalReviews,
-              capturedReviews: p.capturedReviews 
+              capturedReviews: p.capturedReviews,
+              lastSyncStatus: p.lastSyncStatus,
+              lastSyncError: p.lastSyncError,
             };
           });
           setOfficialStatsMap(map);
@@ -113,6 +115,8 @@ export function useDashboardData(
         currentTotalReviews,
         currentAverageRating,
         capturedReviews,
+        lastSyncStatus: officialStatsMap[pid]?.lastSyncStatus ?? c.lastSyncStatus ?? null,
+        lastSyncError: officialStatsMap[pid]?.lastSyncError ?? c.lastSyncError ?? null,
         sentimentScore: agg?.sentiment ?? 0,
         feedbackDensity: agg?.density ?? 0,
         starDistribution: agg?.distribution ?? null,
@@ -260,7 +264,7 @@ export function useDashboardData(
   const startCloudSync = async (target: 'all' | 'selected', officialOnly: boolean = false) => {
     setIsSyncing(true);
     setIsSyncModalOpen(false);
-    setSyncLogs([{ cinema: 'System', status: 'loading', message: officialOnly ? 'Đang thực hiện đồng bộ nhanh...' : 'Đang khởi động Python scraper...' }]);
+    setSyncLogs([{ cinema: 'System', status: 'loading', message: officialOnly ? 'Đang đồng bộ snapshot official và review mới...' : 'Đang khởi động Python scraper...' }]);
 
     try {
       const selectedData = target === 'selected' 

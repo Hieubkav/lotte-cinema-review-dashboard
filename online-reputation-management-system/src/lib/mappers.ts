@@ -12,8 +12,13 @@ export function mapCinema(doc: any): Cinema {
     longitude: doc.longitude,
     firstSeen: doc.first_seen || doc.firstSeen,
     lastScraped: doc.last_scraped || doc.lastScraped,
-    totalReviews: doc.total_reviews || doc.totalReviews,
-    avgRating: doc.avg_rating || doc.avgRating,
+    totalReviews: doc.official_total_reviews || doc.total_reviews || doc.totalReviews,
+    avgRating: doc.official_avg_rating || doc.avg_rating || doc.avgRating,
+    officialTotalReviews: doc.official_total_reviews || doc.total_reviews || doc.totalReviews,
+    officialAvgRating: doc.official_avg_rating || doc.avg_rating || doc.avgRating,
+    capturedTotalReviews: doc.captured_total_reviews || 0,
+    lastSyncStatus: doc.last_sync_status || doc.lastSyncStatus,
+    lastSyncError: doc.last_sync_error || doc.lastSyncError || null,
   };
 }
 

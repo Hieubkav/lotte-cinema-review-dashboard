@@ -48,9 +48,10 @@ export async function runMetricsAggregation(onProgress?: (p: SyncProgress) => vo
       if (onProgress) onProgress({ cinema: name, status: 'loading', message: 'Đang tổng hợp metrics...' });
 
       try {
-        // 1. Số liệu chính thức từ Google (Python scraper đã ghi vào places)
-        const officialAvgRating = branch.avg_rating ?? 0;
-        const officialTotalReviews = branch.total_reviews ?? 0;
+        // 1. Số liệu chính thức từ Google (Python scraper đã ghi vào places snapshot)
+        const officialAvgRating = branch.official_avg_rating ?? branch.avg_rating ?? 0;
+        const officialTotalReviews = branch.official_total_reviews ?? branch.total_reviews ?? 0;
+        const capturedTotalReviews = branch.captured_total_reviews ?? 0;
 
         // 2. Tính star distribution và Sentiment Score từ reviews đã cào
         const distResult = await reviewsColl.aggregate([
@@ -95,7 +96,7 @@ export async function runMetricsAggregation(onProgress?: (p: SyncProgress) => vo
               sentiment_score: Number(sentimentScore.toFixed(2)),
               density_30d: Number(density.toFixed(3)),
               reviews_last_30d: recent30d,
-              captured_reviews: dist.capturedTotal,
+              captured_reviews: capturedTotalReviews || dist.capturedTotal,
               star_distribution: {
                 '1': dist.star1,
                 '2': dist.star2,

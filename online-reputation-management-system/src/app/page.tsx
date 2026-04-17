@@ -30,13 +30,13 @@ export default async function Dashboard() {
     }));
 
     // 2. Compute Global Metrics from Official Stats (Network-wide reality)
-    const validCinemas = cinemasList.filter(c => (c as any).avg_rating > 0 && (c as any).total_reviews > 0);
-    const totalNetworkReviews = cinemasList.reduce((acc, c: any) => acc + (c.total_reviews || 0), 0);
-    const weightedSum = cinemasList.reduce((acc, c: any) => acc + ((c.avg_rating || 0) * (c.total_reviews || 0)), 0);
+    const validCinemas = cinemasList.filter(c => ((c as any).official_avg_rating ?? (c as any).avg_rating) > 0 && ((c as any).official_total_reviews ?? (c as any).total_reviews) > 0);
+    const totalNetworkReviews = cinemasList.reduce((acc, c: any) => acc + (c.official_total_reviews || c.total_reviews || 0), 0);
+    const weightedSum = cinemasList.reduce((acc, c: any) => acc + (((c.official_avg_rating || c.avg_rating || 0)) * (c.official_total_reviews || c.total_reviews || 0)), 0);
     
     const bg = cinemasList.find(c => ((c as any).place_name || '').includes('Bắc Giang'));
     console.log(`[DEBUG] Network Total: ${totalNetworkReviews}, Weighted Avg: ${weightedSum / totalNetworkReviews}`);
-    console.log(`[DEBUG] Bắc Giang in DB: rating=${(bg as any)?.avg_rating}, total=${(bg as any)?.total_reviews}`);
+    console.log(`[DEBUG] Bắc Giang in DB: rating=${(bg as any)?.official_avg_rating ?? (bg as any)?.avg_rating}, total=${(bg as any)?.official_total_reviews ?? (bg as any)?.total_reviews}`);
 
     globalMetrics = {
       totalReviews: totalNetworkReviews,
@@ -53,8 +53,8 @@ export default async function Dashboard() {
         // Base structure from places (authoritative source for headline numbers)
         const base = {
           cinemaId: pid,
-          _count: { _all: c.total_reviews ?? 0 },
-          _avg: { rating: c.avg_rating ?? 0 },
+          _count: { _all: c.official_total_reviews ?? c.total_reviews ?? 0 },
+          _avg: { rating: c.official_avg_rating ?? c.avg_rating ?? 0 },
           sentiment_score: 0,
           density_30d: 0,
           star_distribution: null

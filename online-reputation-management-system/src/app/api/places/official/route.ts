@@ -26,11 +26,13 @@ export async function GET(req: Request) {
       return NextResponse.json({
         placeId: place.place_id,
         name: place.place_name || place.name,
-        avgRating: place.avg_rating ?? 0,
-        totalReviews: place.total_reviews ?? 0,
-        capturedReviews: capturedCount,
+        avgRating: place.official_avg_rating ?? place.avg_rating ?? 0,
+        totalReviews: place.official_total_reviews ?? place.total_reviews ?? 0,
+        capturedReviews: place.captured_total_reviews ?? capturedCount,
         source: 'database',
-        lastScraped: place.last_scraped || place.updated_at
+        lastScraped: place.last_scraped || place.updated_at,
+        lastSyncStatus: place.last_sync_status ?? null,
+        lastSyncError: place.last_sync_error ?? null,
       });
     } else {
       // Fetch all places
@@ -41,11 +43,13 @@ export async function GET(req: Request) {
         return {
           placeId: place.place_id,
           name: place.place_name || place.name,
-          avgRating: place.avg_rating ?? 0,
-          totalReviews: place.total_reviews ?? 0,
-          capturedReviews: capturedCount,
+          avgRating: place.official_avg_rating ?? place.avg_rating ?? 0,
+          totalReviews: place.official_total_reviews ?? place.total_reviews ?? 0,
+          capturedReviews: place.captured_total_reviews ?? capturedCount,
           source: 'database',
-          lastScraped: place.last_scraped || place.updated_at
+          lastScraped: place.last_scraped || place.updated_at,
+          lastSyncStatus: place.last_sync_status ?? null,
+          lastSyncError: place.last_sync_error ?? null,
         };
       }));
 

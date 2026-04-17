@@ -23,7 +23,7 @@ from modules.place_id import canonicalize_url
 
 log = logging.getLogger("scraper")
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA_DDL = """
 -- Schema version tracking (single-row model)
@@ -44,7 +44,12 @@ CREATE TABLE IF NOT EXISTS places (
     longitude      REAL,
     first_seen     TEXT NOT NULL,
     last_scraped   TEXT,
-    total_reviews  INTEGER DEFAULT 0
+    total_reviews  INTEGER DEFAULT 0,
+    official_total_reviews INTEGER DEFAULT 0,
+    official_avg_rating REAL DEFAULT 0,
+    captured_total_reviews INTEGER DEFAULT 0,
+    last_sync_status TEXT,
+    last_sync_error TEXT
 );
 
 -- Place aliases
@@ -222,12 +227,44 @@ class ReviewDB:
         else:
             self.backend.execute(
                 "INSERT INTO places (place_id, place_name, original_url, resolved_url, "
-                "latitude, longitude, first_seen, last_scraped, total_reviews) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)",
+                "latitude, longitude, first_seen, last_scraped, total_reviews, "
+                "official_total_reviews, official_avg_rating, captured_total_reviews, last_sync_status, last_sync_error) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL)",
                 (place_id, place_name, original_url, canon_url, lat, lng, now, now)
             )
         self.backend.commit()
         return place_id
+
+    def update_place_snapshot(
+        self,
+        place_id: str,
+        *,
+        official_total_reviews: int | None = None,
+        official_avg_rating: float | None = None,
+        captured_total_reviews: int | None = None,
+        last_sync_status: str | None = None,
+        last_sync_error: str | None = None,
+    ) -> None:
+        existing = self.get_place(place_id)
+        if not existing:
+            return
+
+        self.backend.execute(
+            "UPDATE places SET total_reviews = ?, official_total_reviews = ?, official_avg_rating = ?, "
+            "captured_total_reviews = ?, last_scraped = ?, last_sync_status = ?, last_sync_error = ? "
+            "WHERE place_id = ?",
+            (
+                official_total_reviews if official_total_reviews is not None else existing.get("total_reviews", 0),
+                official_total_reviews if official_total_reviews is not None else existing.get("official_total_reviews", existing.get("total_reviews", 0)),
+                official_avg_rating if official_avg_rating is not None else existing.get("official_avg_rating", 0),
+                captured_total_reviews if captured_total_reviews is not None else existing.get("captured_total_reviews", existing.get("total_reviews", 0)),
+                _now_utc(),
+                last_sync_status if last_sync_status is not None else existing.get("last_sync_status"),
+                last_sync_error,
+                place_id,
+            )
+        )
+        self.backend.commit()
 
     def resolve_alias(self, place_id: str, resolved_url: str) -> str:
         """
@@ -517,18 +554,19 @@ class ReviewDB:
                                         scrape_mode=scrape_mode)
             stats[result] = stats.get(result, 0) + 1
 
-        # Update place total_reviews
+        # Update captured total_reviews
         count_row = self.backend.fetchone(
             "SELECT COUNT(*) as cnt FROM reviews "
             "WHERE place_id = ? AND is_deleted = 0",
             (place_id,)
         )
         if count_row:
-            self.backend.execute(
-                "UPDATE places SET total_reviews = ? WHERE place_id = ?",
-                (count_row["cnt"], place_id)
+            self.update_place_snapshot(
+                place_id,
+                captured_total_reviews=count_row["cnt"],
+                last_sync_status="reviews_synced",
+                last_sync_error=None,
             )
-            self.backend.commit()
 
         return stats
 
@@ -858,7 +896,8 @@ class ReviewDB:
 
         # Per-place stats
         stats["places"] = self.backend.fetchall(
-            "SELECT p.place_id, p.place_name, p.total_reviews, p.last_scraped "
+            "SELECT p.place_id, p.place_name, p.total_reviews, p.official_total_reviews, "
+            "p.official_avg_rating, p.captured_total_reviews, p.last_scraped, p.last_sync_status "
             "FROM places p ORDER BY p.last_scraped DESC"
         )
         return stats
@@ -1042,6 +1081,11 @@ class ReviewDB:
 
 # Migration definitions (version -> list of DDL statements)
 _MIGRATIONS: Dict[int, List[str]] = {
-    # Future migrations go here:
-    # 2: ["ALTER TABLE reviews ADD COLUMN new_field TEXT;"],
+    1: [
+        "ALTER TABLE places ADD COLUMN official_total_reviews INTEGER DEFAULT 0;",
+        "ALTER TABLE places ADD COLUMN official_avg_rating REAL DEFAULT 0;",
+        "ALTER TABLE places ADD COLUMN captured_total_reviews INTEGER DEFAULT 0;",
+        "ALTER TABLE places ADD COLUMN last_sync_status TEXT;",
+        "ALTER TABLE places ADD COLUMN last_sync_error TEXT;",
+    ],
 }

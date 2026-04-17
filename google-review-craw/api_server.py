@@ -199,6 +199,7 @@ class ScrapeRequest(BaseModel):
     download_images: Optional[bool] = Field(None, description="Download images from reviews")
     use_s3: Optional[bool] = Field(None, description="Upload images to S3")
     custom_params: Optional[Dict[str, Any]] = Field(None, description="Custom parameters to add to each document")
+    official_only: Optional[bool] = Field(None, description="Accepted for UI compatibility; currently performs normal scrape flow")
 
 
 class JobResponse(BaseModel):
