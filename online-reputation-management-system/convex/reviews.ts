@@ -95,3 +95,34 @@ export const upsertManyForPlace = mutationGeneric({
     return { upserted };
   },
 });
+
+export const cleanupByPlace = mutationGeneric({
+  args: {
+    placeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const reviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+
+    for (const review of reviews) {
+      await ctx.db.delete(review._id);
+    }
+
+    const metrics = await ctx.db
+      .query("branchDailyMetrics")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+
+    for (const metric of metrics) {
+      await ctx.db.delete(metric._id);
+    }
+
+    return {
+      placeId: args.placeId,
+      deletedReviews: reviews.length,
+      deletedMetrics: metrics.length,
+    };
+  },
+});
