@@ -160,3 +160,45 @@ class TestSyncStatusCommand:
         _run_sync_status({}, args)
         output = capsys.readouterr().out
         assert "No sync checkpoints" in output
+
+
+class TestInteractiveBusinessSelection:
+    """Tests for interactive scrape selection."""
+
+    def test_filter_businesses_for_query(self):
+        from start import _filter_businesses_for_query
+
+        businesses = [
+            {"url": "https://example.com/a", "custom_params": {"company": "LOTTE Cinema Moonlight", "placeId": "p1"}},
+            {"url": "https://example.com/b", "custom_params": {"company": "LOTTE Cinema West Lake", "placeId": "p2"}},
+        ]
+
+        matches = _filter_businesses_for_query(businesses, "west")
+        assert len(matches) == 1
+        assert matches[0][1]["custom_params"]["placeId"] == "p2"
+
+    def test_prompt_sync_businesses_all(self):
+        from start import _prompt_sync_businesses
+
+        businesses = [
+            {"url": "https://example.com/a", "custom_params": {"company": "A"}},
+            {"url": "https://example.com/b", "custom_params": {"company": "B"}},
+        ]
+
+        with patch("builtins.input", side_effect=["a"]):
+            selected = _prompt_sync_businesses(businesses)
+
+        assert selected == businesses
+
+    def test_prompt_sync_businesses_single(self):
+        from start import _prompt_sync_businesses
+
+        businesses = [
+            {"url": "https://example.com/a", "custom_params": {"company": "Moonlight", "placeId": "p1"}},
+            {"url": "https://example.com/b", "custom_params": {"company": "West Lake", "placeId": "p2"}},
+        ]
+
+        with patch("builtins.input", side_effect=["o", "west", "1"]):
+            selected = _prompt_sync_businesses(businesses)
+
+        assert selected == [businesses[1]]

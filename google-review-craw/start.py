@@ -9,6 +9,7 @@ Main entry point supporting scrape + management commands.
 import json
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 from modules.cli import parse_arguments
 from modules.config import load_config
@@ -96,6 +97,83 @@ def _build_business_config(base_config, overrides):
     return merged
 
 
+def _extract_business_label(business, index):
+    """Build a readable label for interactive business selection."""
+    custom_params = business.get("custom_params") or {}
+    company = (custom_params.get("company") or "").strip()
+    place_id = (custom_params.get("placeId") or "").strip()
+    url = (business.get("url") or "").strip()
+
+    if not company and url:
+        company = unquote(url).split("query=")[-1].split("&")[0].replace("+", " ")
+
+    name = company or f"Business {index + 1}"
+    if place_id:
+        return f"{name} [{place_id}]"
+    return name
+
+
+def _filter_businesses_for_query(businesses, query):
+    """Return businesses matching a search query."""
+    normalized_query = (query or "").strip().lower()
+    if not normalized_query:
+        return list(enumerate(businesses))
+
+    matches = []
+    for index, business in enumerate(businesses):
+        custom_params = business.get("custom_params") or {}
+        haystacks = [
+            (custom_params.get("company") or ""),
+            (custom_params.get("placeId") or ""),
+            (business.get("url") or ""),
+        ]
+        if any(normalized_query in value.lower() for value in haystacks):
+            matches.append((index, business))
+    return matches
+
+
+def _prompt_sync_businesses(businesses):
+    """Ask user to sync all businesses or choose one interactively."""
+    if len(businesses) <= 1:
+        return businesses
+
+    while True:
+        choice = input(
+            f"\nTìm thấy {len(businesses)} business trong config. "
+            "Chọn [A]ll để chạy hết hoặc [O]ne để chọn 1: "
+        ).strip().lower()
+
+        if choice in {"a", "all", ""}:
+            return businesses
+        if choice in {"o", "one", "1"}:
+            break
+        print("Lựa chọn không hợp lệ. Nhập A hoặc O.")
+
+    while True:
+        query = input("\nGõ để lọc business (Enter để hiện tất cả): ").strip()
+        matches = _filter_businesses_for_query(businesses, query)
+
+        if not matches:
+            print("Không tìm thấy business phù hợp. Thử từ khóa khác.")
+            continue
+
+        print("\nKết quả:")
+        for display_index, (business_index, business) in enumerate(matches, start=1):
+            label = _extract_business_label(business, business_index)
+            print(f"  {display_index}. {label}")
+
+        selected = input("Chọn số business muốn chạy: ").strip()
+        if not selected.isdigit():
+            print("Vui lòng nhập số hợp lệ.")
+            continue
+
+        selected_index = int(selected)
+        if 1 <= selected_index <= len(matches):
+            return [matches[selected_index - 1][1]]
+
+        print("Số nằm ngoài danh sách. Vui lòng chọn lại.")
+
+
 def _run_scrape(config, args):
     """Run the scrape command."""
     from modules.scraper import GoogleReviewsScraper
@@ -106,6 +184,9 @@ def _run_scrape(config, args):
     if not businesses:
         print("Error: No URL configured. Use --url or set 'businesses'/'urls' in config.yaml")
         sys.exit(1)
+
+    if not getattr(args, "url", None):
+        businesses = _prompt_sync_businesses(businesses)
 
     for i, biz in enumerate(businesses):
         biz_config = _build_business_config(config, biz)
