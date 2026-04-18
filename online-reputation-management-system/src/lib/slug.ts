@@ -12,12 +12,19 @@ export function slugifyPlaceName(name: string) {
 
 export function buildPlaceSlug(name: string, placeId: string) {
   const base = slugifyPlaceName(name) || 'place';
-  return `${base}--${placeId}`;
+  return `${base}--${encodeURIComponent(placeId)}`;
 }
 
 export function extractPlaceIdFromSlug(slug: string) {
   const marker = '--';
   const index = slug.lastIndexOf(marker);
   if (index === -1) return null;
-  return slug.slice(index + marker.length) || null;
+  const encodedPlaceId = slug.slice(index + marker.length);
+  if (!encodedPlaceId) return null;
+
+  try {
+    return decodeURIComponent(encodedPlaceId);
+  } catch {
+    return null;
+  }
 }
