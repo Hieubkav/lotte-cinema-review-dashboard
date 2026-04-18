@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight
 } from 'lucide-react';
 import ReviewCard from '../components/ReviewCard';
-import { TAG_MAP } from '../utils';
+import { TAG_KEYS, TAG_LABELS, type TagKey } from '../utils';
 
 type Review = {
   _id?: string;
@@ -32,6 +32,9 @@ type PlaceDetailViewProps = {
   page: number;
   total: number;
   totalPages: number;
+  searchQuery: string;
+  selectedTags: TagKey[];
+  sort: 'date_desc' | 'date_asc';
 };
 
 function buildPageHref(page: number, params: URLSearchParams) {
@@ -39,7 +42,7 @@ function buildPageHref(page: number, params: URLSearchParams) {
   if (page <= 1) next.delete('page');
   else next.set('page', String(page));
   const query = next.toString();
-  return query ? `?${query}` : '';
+  return query ? `?${query}` : '.';
 }
 
 export default function PlaceDetailView({
@@ -48,32 +51,14 @@ export default function PlaceDetailView({
   page,
   total,
   totalPages,
+  searchQuery,
+  selectedTags,
+  sort,
 }: PlaceDetailViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
-  const [sortOrder, setSortOrder] = React.useState<'desc' | 'asc'>('desc');
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [syncError, setSyncError] = React.useState<string | null>(null);
-
-  const filteredReviews = React.useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return [...reviews]
-      .filter((review) => {
-        const text = review.text?.toLowerCase() || '';
-        const author = review.authorName?.toLowerCase() || '';
-        const tags = Object.keys(TAG_MAP).filter((tag) => text.includes(tag.toLowerCase()));
-        const matchesQuery = !q || text.includes(q) || author.includes(q);
-        const matchesTags = selectedTags.length === 0 || selectedTags.some((tag) => tags.includes(tag));
-        return matchesQuery && matchesTags;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.isoDate || a.date || 0).getTime();
-        const dateB = new Date(b.isoDate || b.date || 0).getTime();
-        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-      });
-  }, [reviews, searchQuery, selectedTags, sortOrder]);
 
   const pageNumbers = React.useMemo(() => {
     if (totalPages <= 1) return [];
@@ -103,6 +88,17 @@ export default function PlaceDetailView({
   };
 
   const currentParams = new URLSearchParams(searchParams.toString());
+
+  const updateFilters = React.useCallback(
+    (updater: (params: URLSearchParams) => void) => {
+      const next = new URLSearchParams(searchParams.toString());
+      updater(next);
+      next.delete('page');
+      const query = next.toString();
+      router.push(query ? `?${query}` : '?');
+    },
+    [router, searchParams]
+  );
 
   return (
     <div className="min-h-screen bg-background text-primary">
@@ -140,7 +136,13 @@ export default function PlaceDetailView({
                 type="text"
                 placeholder="Tìm trong đánh giá..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) =>
+                  updateFilters((params) => {
+                    const value = e.target.value.trim();
+                    if (value) params.set('q', value);
+                    else params.delete('q');
+                  })
+                }
                 className="w-full h-8 bg-white/10 border-none focus:bg-white/[0.15] rounded-[11px] pl-9 pr-8 text-[13px] text-white placeholder:text-white/30 outline-none transition-all"
                 style={{ letterSpacing: '-0.12px' }}
               />
@@ -214,19 +216,31 @@ export default function PlaceDetailView({
 
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex bg-[var(--surface-3)] p-0.5 rounded-[980px] flex-wrap gap-0.5">
-                    {Object.keys(TAG_MAP).map((tag) => (
+                    {TAG_KEYS.map((tag) => (
                       <button
                         key={tag}
-                        onClick={() => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag])}
+                        onClick={() =>
+                          updateFilters((params) => {
+                            const nextTags = selectedTags.includes(tag)
+                              ? selectedTags.filter((item) => item !== tag)
+                              : [...selectedTags, tag];
+                            if (nextTags.length > 0) params.set('tags', nextTags.join(','));
+                            else params.delete('tags');
+                          })
+                        }
                         className={`px-3 py-1 rounded-[980px] text-[12px] font-semibold transition-all ${selectedTags.includes(tag) ? 'bg-[#0071e3] text-white shadow-sm' : 'text-tertiary hover:text-secondary'}`}
                         style={{ letterSpacing: '-0.12px' }}
                       >
-                        {tag}
+                        {TAG_LABELS[tag]}
                       </button>
                     ))}
                     {selectedTags.length > 0 && (
                       <button
-                        onClick={() => setSelectedTags([])}
+                        onClick={() =>
+                          updateFilters((params) => {
+                            params.delete('tags');
+                          })
+                        }
                         className="p-1 px-2 text-tertiary hover:text-[#ff453a] transition-colors"
                         title="Bỏ lọc"
                       >
@@ -236,7 +250,11 @@ export default function PlaceDetailView({
                   </div>
 
                   <button
-                    onClick={() => setSortOrder((prev) => prev === 'desc' ? 'asc' : 'desc')}
+                    onClick={() =>
+                      updateFilters((params) => {
+                        params.set('sort', sort === 'date_desc' ? 'date_asc' : 'date_desc');
+                      })
+                    }
                     className="p-2 bg-[var(--surface-3)] hover:bg-[var(--surface-2)] rounded-[8px] text-tertiary hover:text-secondary transition-colors"
                     title="Đổi thứ tự ngày"
                   >
@@ -249,11 +267,11 @@ export default function PlaceDetailView({
                 <p className="text-sm text-[#ff453a]">{syncError}</p>
               )}
 
-              {filteredReviews.length === 0 ? (
-                <div className="py-12 text-center text-tertiary">Không tìm thấy đánh giá phù hợp trên trang này.</div>
+              {reviews.length === 0 ? (
+                <div className="py-12 text-center text-tertiary">Không tìm thấy đánh giá phù hợp.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {filteredReviews.map((review, idx) => (
+                  {reviews.map((review, idx) => (
                     <ReviewCard key={review._id || review.reviewId || idx} review={review} highlightedReviewId={null} />
                   ))}
                 </div>
@@ -266,14 +284,23 @@ export default function PlaceDetailView({
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Link
-                      href={buildPageHref(page - 1, currentParams)}
-                      aria-disabled={page <= 1}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors ${page <= 1 ? 'pointer-events-none bg-[var(--surface-3)] text-tertiary/50' : 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary'}`}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Trang trước
-                    </Link>
+                    {page <= 1 ? (
+                      <span
+                        aria-disabled
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors pointer-events-none bg-[var(--surface-3)] text-tertiary/50"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Trang trước
+                      </span>
+                    ) : (
+                      <Link
+                        href={buildPageHref(page - 1, currentParams)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Trang trước
+                      </Link>
+                    )}
 
                     {pageNumbers.map((pageNumber, index) => {
                       const prev = pageNumbers[index - 1];
@@ -291,14 +318,23 @@ export default function PlaceDetailView({
                       );
                     })}
 
-                    <Link
-                      href={buildPageHref(page + 1, currentParams)}
-                      aria-disabled={page >= totalPages}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors ${page >= totalPages ? 'pointer-events-none bg-[var(--surface-3)] text-tertiary/50' : 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary'}`}
-                    >
-                      Trang sau
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
+                    {page >= totalPages ? (
+                      <span
+                        aria-disabled
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors pointer-events-none bg-[var(--surface-3)] text-tertiary/50"
+                      >
+                        Trang sau
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    ) : (
+                      <Link
+                        href={buildPageHref(page + 1, currentParams)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary"
+                      >
+                        Trang sau
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}

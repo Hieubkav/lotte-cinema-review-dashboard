@@ -1,15 +1,45 @@
 import { queryGeneric, mutationGeneric } from "convex/server";
 import { v } from "convex/values";
 
+const TAG_MAP = {
+  service: ['phục vụ', 'nhân viên', 'service', 'staff', 'nhiệt tình', 'thái độ', 'không hài lòng', 'support', 'hỗ trợ'],
+  food: ['bắp', 'nước', 'popcorn', 'drink', 'food', 'đồ ăn', 'com bo', 'combo'],
+  cleanliness: ['sạch', 'bẩn', 'vệ sinh', 'mùi', 'clean', 'dirty', 'thơm', 'hôi'],
+  experience: ['phim', 'ghế', 'âm thanh', 'màn hình', 'movie', 'seat', 'sound', 'screen', 'trải nghiệm', 'ổn', 'tệ'],
+  price: ['giá', 'đắt', 'rẻ', 'mắc', 'chi phí', 'tiền', 'price', 'expensive', 'cheap'],
+} as const;
+
+type TagKey = keyof typeof TAG_MAP;
+
+function getTags(text: string = ""): TagKey[] {
+  if (!text) return [];
+  const lowText = text.toLowerCase();
+  const tags: TagKey[] = [];
+
+  for (const key of Object.keys(TAG_MAP) as TagKey[]) {
+    if (TAG_MAP[key].some((keyword) => lowText.includes(keyword))) {
+      tags.push(key);
+    }
+  }
+
+  return tags;
+}
+
 export const paginatedByPlace = queryGeneric({
   args: {
     placeId: v.optional(v.string()),
     page: v.optional(v.number()),
     limit: v.optional(v.number()),
+    q: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    sort: v.optional(v.union(v.literal("date_desc"), v.literal("date_asc"))),
   },
   handler: async (ctx, args) => {
     const page = Math.max(1, args.page ?? 1);
     const limit = Math.min(200, Math.max(1, args.limit ?? 50));
+    const searchQuery = args.q?.trim().toLowerCase() ?? "";
+    const selectedTags = (args.tags ?? []).filter((tag): tag is TagKey => tag in TAG_MAP);
+    const sort = args.sort ?? "date_desc";
 
     let rows = args.placeId
       ? await ctx.db
@@ -18,7 +48,19 @@ export const paginatedByPlace = queryGeneric({
           .collect()
       : await ctx.db.query("reviews").collect();
 
-    rows = rows.sort((a: any, b: any) => (b.isoDate || "").localeCompare(a.isoDate || ""));
+    rows = rows.filter((review: any) => {
+      const text = (review.text ?? "").toLowerCase();
+      const author = (review.authorName ?? "").toLowerCase();
+      const reviewTags = getTags(review.text ?? "");
+      const matchesQuery = !searchQuery || text.includes(searchQuery) || author.includes(searchQuery);
+      const matchesTags = selectedTags.length === 0 || selectedTags.some((tag) => reviewTags.includes(tag));
+      return matchesQuery && matchesTags;
+    });
+
+    rows = rows.sort((a: any, b: any) => {
+      const result = (a.isoDate || "").localeCompare(b.isoDate || "");
+      return sort === "date_asc" ? result : -result;
+    });
     const total = rows.length;
     const start = (page - 1) * limit;
     const end = start + limit;

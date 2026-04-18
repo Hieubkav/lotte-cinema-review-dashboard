@@ -2,10 +2,29 @@ import { notFound } from 'next/navigation';
 import PlaceDetailView from '@/components/dashboard/views/PlaceDetailView';
 import { convexQuery } from '@/lib/convex';
 import { extractPlaceIdFromSlug } from '@/lib/slug';
+import { TAG_KEYS, type TagKey } from '@/components/dashboard/utils';
 
 export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 24;
+const SORT_OPTIONS = new Set(['date_desc', 'date_asc']);
+
+function normalizeSearchQuery(value?: string) {
+  const query = value?.trim() ?? '';
+  return query.length > 0 ? query : undefined;
+}
+
+function normalizeTags(value?: string): TagKey[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag): tag is TagKey => TAG_KEYS.includes(tag as TagKey));
+}
+
+function normalizeSort(value?: string): 'date_desc' | 'date_asc' {
+  return SORT_OPTIONS.has(value ?? '') ? (value as 'date_desc' | 'date_asc') : 'date_desc';
+}
 
 function serializeReview(r: any) {
   return {
@@ -30,7 +49,7 @@ export default async function PlacePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; tags?: string; sort?: string }>;
 }) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
@@ -39,6 +58,9 @@ export default async function PlacePage({
   if (!placeId) notFound();
 
   const page = Math.max(1, Number(resolvedSearchParams.page || '1') || 1);
+  const q = normalizeSearchQuery(resolvedSearchParams.q);
+  const tags = normalizeTags(resolvedSearchParams.tags);
+  const sort = normalizeSort(resolvedSearchParams.sort);
 
   try {
     const [place, reviewResult] = await Promise.all([
@@ -47,6 +69,9 @@ export default async function PlacePage({
         placeId,
         page,
         limit: PAGE_SIZE,
+        q,
+        tags,
+        sort,
       }),
     ]);
 
@@ -65,6 +90,9 @@ export default async function PlacePage({
         page={reviewResult.page || page}
         total={reviewResult.total || 0}
         totalPages={reviewResult.totalPages || 0}
+        searchQuery={q ?? ''}
+        selectedTags={tags}
+        sort={sort}
       />
     );
   } catch {

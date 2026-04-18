@@ -6,7 +6,7 @@ import {
 import { useTheme } from 'next-themes';
 import { DashboardState } from '../hooks/useDashboardData';
 import ReviewCard from '../components/ReviewCard';
-import { TAG_MAP, getTags } from '../utils';
+import { TAG_MAP, TAG_KEYS, getTags, type TagKey } from '../utils';
 
 export default function BranchView({ state }: { state: DashboardState }) {
   const {
@@ -144,7 +144,7 @@ export default function BranchView({ state }: { state: DashboardState }) {
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Tag filters */}
                 <div className="flex bg-[var(--surface-3)] p-0.5 rounded-[980px] flex-wrap gap-0.5">
-                  {Object.keys(TAG_MAP).map(t => (
+                  {TAG_KEYS.map((t) => (
                     <button
                       key={t}
                       onClick={() => setSelectedTags((prev: string[]) => prev.includes(t) ? prev.filter((x: string) => x !== t) : [...prev, t])}
@@ -247,7 +247,7 @@ export default function BranchView({ state }: { state: DashboardState }) {
               </button>
             </div>
             <div className="p-4 pt-0 flex flex-col gap-2 max-h-[640px] overflow-y-auto custom-scrollbar">
-              {Object.keys(TAG_MAP)
+              {TAG_KEYS
                 .sort((a, b) => {
                   const ma = activeCinema?.reviews?.filter((r: any) => getTags(r.text).includes(a)) ?? [];
                   const mb = activeCinema?.reviews?.filter((r: any) => getTags(r.text).includes(b)) ?? [];
@@ -255,7 +255,7 @@ export default function BranchView({ state }: { state: DashboardState }) {
                   const avgB = mb.length > 0 ? mb.reduce((acc: number, cur: any) => acc + cur.rating, 0) / mb.length : 0;
                   return topicSort === 'rating-desc' ? avgB - avgA : avgA - avgB;
                 })
-                .map(t => {
+                .map((t: TagKey) => {
                   const mentions = activeCinema?.reviews?.filter((r: any) => getTags(r.text).includes(t)) ?? [];
                   const avg = mentions.length > 0
                     ? (mentions.reduce((a: number, b: any) => a + b.rating, 0) / mentions.length).toFixed(1)
