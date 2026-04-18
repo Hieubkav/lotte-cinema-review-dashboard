@@ -8,6 +8,7 @@ Main entry point supporting scrape + management commands.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -210,9 +211,12 @@ def _sync_place_to_convex(config, place_snapshot, reviews):
     ]
 
     env = os.environ.copy()
+    npx_cmd = shutil.which("npx.cmd") or shutil.which("npx")
+    if not npx_cmd:
+        raise RuntimeError("Không tìm thấy npx/npx.cmd để gọi Convex CLI")
     for function_name, payload in commands:
         result = subprocess.run(
-            ["node", str(convex_script), function_name, json.dumps(payload, ensure_ascii=False)],
+            [npx_cmd, "convex", "run", "--env-file", ".env.local", function_name, json.dumps(payload, ensure_ascii=False)],
             cwd=str(web_root),
             env=env,
             check=False,

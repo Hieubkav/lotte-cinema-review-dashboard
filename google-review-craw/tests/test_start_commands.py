@@ -220,10 +220,12 @@ class TestConvexSyncHelpers:
         assert metrics["starDistribution"]["star5"] == 1
         assert metrics["starDistribution"]["star3"] == 1
 
+    @patch("start.shutil.which")
     @patch("start.subprocess.run")
-    def test_sync_place_to_convex_runs_required_mutations(self, mock_run, tmp_path):
+    def test_sync_place_to_convex_runs_required_mutations(self, mock_run, mock_which, tmp_path):
         from start import _sync_place_to_convex
 
+        mock_which.return_value = "C:\\Program Files\\nodejs\\npx.cmd"
         mock_run.return_value.returncode = 0
         project_root = tmp_path / "lotte_gg_map"
         crawler_root = project_root / "google-review-craw"
