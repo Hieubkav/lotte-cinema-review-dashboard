@@ -28,10 +28,6 @@ export function useDashboardData(
   const [topicSort, setTopicSort] = useState<'rating-desc' | 'rating-asc'>('rating-desc');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false);
-  const [extraReviews, setExtraReviews] = useState<Record<string, any[]>>({});
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [reviewPages, setReviewPages] = useState<Record<string, number>>({});
-  const [totalReviewsAvailable, setTotalReviewsAvailable] = useState<Record<string, number>>({});
   const [historicalMetrics, setHistoricalMetrics] = useState<any[]>([]);
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
   const [officialStatsMap, setOfficialStatsMap] = useState<Record<string, { avgRating: number, totalReviews: number, capturedReviews: number, lastSyncStatus?: string | null, lastSyncError?: string | null }>>({});
@@ -106,9 +102,6 @@ export function useDashboardData(
       const currentAverageRating = officialStatsMap[pid]?.avgRating ?? agg?.rating ?? 0;
       const capturedReviews = officialStatsMap[pid]?.capturedReviews ?? c.reviews?.length ?? 0;
 
-      // Merge initial reviews with extra reviews loaded via API
-      const combinedReviews = [...(c.reviews || []), ...(extraReviews[pid] || [])];
-
       return {
         ...c,
         place_id: pid, // ensure place_id is always set
@@ -120,36 +113,10 @@ export function useDashboardData(
         sentimentScore: agg?.sentiment ?? 0,
         feedbackDensity: agg?.density ?? 0,
         starDistribution: agg?.distribution ?? null,
-        reviews: combinedReviews.map((r: any) => ({ ...r, tags: getTags(r.text) }))
+        reviews: (c.reviews || []).map((r: any) => ({ ...r, tags: getTags(r.text) }))
       };
     });
-  }, [cinemas, aggregateMap, extraReviews, officialStatsMap]);
-
-  const loadMoreReviews = async (cinemaId: string) => {
-    if (isLoadingMore) return;
-    setIsLoadingMore(true);
-
-    const currentPage = reviewPages[cinemaId] || 1;
-    const nextPage = currentPage + 1;
-
-    try {
-      const res = await fetch(`/api/reviews?cinemaId=${cinemaId}&page=${nextPage}&limit=100`);
-      const data = await res.json();
-
-      if (data.reviews) {
-        setExtraReviews(prev => ({
-          ...prev,
-          [cinemaId]: [...(prev[cinemaId] || []), ...data.reviews]
-        }));
-        setReviewPages(prev => ({ ...prev, [cinemaId]: nextPage }));
-        setTotalReviewsAvailable(prev => ({ ...prev, [cinemaId]: data.total }));
-      }
-    } catch (error) {
-      console.error('Failed to load more reviews:', error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
+  }, [cinemas, aggregateMap, officialStatsMap]);
 
   const filteredCinemas = useMemo(() => {
     let result = cinemasWithLatest.filter(c =>
@@ -355,10 +322,10 @@ export function useDashboardData(
     globalData,
     activeCinema,
     filteredReviews,
-    isLoadingMore,
-    loadMoreReviews,
     startCloudSync,
-    hasMore: (totalReviewsAvailable[activeTab] || activeCinema?.currentTotalReviews || 0) > (activeCinema?.reviews?.length || 0)
+    isLoadingMore: false,
+    loadMoreReviews: async (_cinemaId?: string) => {},
+    hasMore: false
   };
 }
 

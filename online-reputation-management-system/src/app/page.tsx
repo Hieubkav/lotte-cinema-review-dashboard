@@ -1,5 +1,6 @@
 import DashboardClient from '@/components/DashboardClient';
 import { convexQuery } from '@/lib/convex';
+import { buildPlaceSlug } from '@/lib/slug';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,7 @@ export default async function Dashboard() {
     cinemas = places.map((p: any) => ({
       ...p,
       placeId: p.placeId,
+      slug: buildPlaceSlug(p.name, p.placeId),
       place_name: p.name,
       name: p.name,
       total_reviews: p.officialTotalReviews ?? 0,

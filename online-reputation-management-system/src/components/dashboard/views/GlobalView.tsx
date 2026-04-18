@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ShieldCheck, MessageSquareQuote, Building2, AlertTriangle,
   TrendingUp, BarChart3, Star, Search, Activity
@@ -7,8 +8,10 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'rechar
 import { useTheme } from 'next-themes';
 import { DashboardState } from '../hooks/useDashboardData';
 import { getTags } from '../utils';
+import { buildPlaceSlug } from '@/lib/slug';
 
 export default function GlobalView({ state }: { state: DashboardState }) {
+  const router = useRouter();
   const {
     cinemasWithLatest,
     globalData,
@@ -24,37 +27,37 @@ export default function GlobalView({ state }: { state: DashboardState }) {
 
   const kpiCards = [
     {
-      label: 'Network Sentiment',
+      label: 'Mức cảm xúc toàn hệ thống',
       val: `${((Number(globalData.avgRating) - 1) / 4 * 100).toFixed(1)}%`,
-      sub: `${Number(globalData.avgRating).toFixed(2)} avg rating`,
+      sub: `${Number(globalData.avgRating).toFixed(2)} điểm trung bình`,
       icon: Star,
       accent: '#0071e3',
     },
     {
-      label: 'Google Reviews',
+      label: 'Đánh giá Google',
       val: globalData.totalGoogleReviews.toLocaleString(),
-      sub: 'current official total',
+      sub: 'tổng chính thức hiện tại',
       icon: MessageSquareQuote,
       accent: '#0071e3',
     },
     {
-      label: 'Captured Library',
+      label: 'Đánh giá đã lưu',
       val: globalData.totalCapturedReviews.toLocaleString(),
-      sub: 'preserved in database',
+      sub: 'đã lưu trong cơ sở dữ liệu',
       icon: Activity,
       accent: '#af52de',
     },
     {
-      label: 'Cinema Branches',
+      label: 'Số chi nhánh',
       val: String(cinemasWithLatest.length),
-      sub: 'nodes monitored',
+      sub: 'đang theo dõi',
       icon: Building2,
       accent: '#0071e3',
     },
     {
-      label: 'Critical Alerts',
+      label: 'Cảnh báo quan trọng',
       val: String(globalData.criticalAlerts.length),
-      sub: 'reviews ≤ 2 stars',
+      sub: 'đánh giá từ 2 sao trở xuống',
       icon: AlertTriangle,
       accent: globalData.criticalAlerts.length > 0 ? '#ff453a' : '#34c759',
     },
@@ -107,7 +110,7 @@ export default function GlobalView({ state }: { state: DashboardState }) {
               className="text-[21px] font-bold text-primary leading-[1.19]"
               style={{ fontFamily: '"SF Pro Display", -apple-system, sans-serif', letterSpacing: '0.231px' }}
             >
-              {leaderboardSort === 'top' ? 'Top Performers' : 'Underperformers'}
+              {leaderboardSort === 'top' ? 'Chi nhánh nổi bật' : 'Chi nhánh cần chú ý'}
             </h3>
             <div className="flex bg-[var(--surface-3)] p-0.5 rounded-[980px]">
               <button
@@ -115,14 +118,14 @@ export default function GlobalView({ state }: { state: DashboardState }) {
                 className={`px-3 py-1 rounded-[980px] text-[12px] font-semibold transition-all ${leaderboardSort === 'top' ? 'bg-[var(--surface-1)] text-primary shadow-sm' : 'text-tertiary hover:text-secondary'}`}
                 style={{ letterSpacing: '-0.12px' }}
               >
-                Top
+                Tốt nhất
               </button>
               <button
                 onClick={() => setLeaderboardSort('bottom')}
                 className={`px-3 py-1 rounded-[980px] text-[12px] font-semibold transition-all ${leaderboardSort === 'bottom' ? 'bg-[var(--surface-1)] text-primary shadow-sm' : 'text-tertiary hover:text-secondary'}`}
                 style={{ letterSpacing: '-0.12px' }}
               >
-                Bottom
+                Thấp nhất
               </button>
             </div>
           </div>
@@ -130,7 +133,11 @@ export default function GlobalView({ state }: { state: DashboardState }) {
             {globalData.leaderboard.map((c, i) => (
               <button
                 key={c.placeId || i}
-                onClick={() => { setActiveTab(c.placeId); setViewMode('branch'); }}
+                onClick={() => {
+                  setActiveTab(c.placeId);
+                  setViewMode('branch');
+                  router.push(`/${buildPlaceSlug(c.name, c.placeId)}`);
+                }}
                 className="w-full flex items-center justify-between px-3 py-3 rounded-[8px] text-left hover:bg-[var(--surface-2)] transition-all group"
               >
                 <div className="flex items-center gap-4 overflow-hidden">
@@ -171,10 +178,10 @@ export default function GlobalView({ state }: { state: DashboardState }) {
               style={{ fontFamily: '"SF Pro Display", -apple-system, sans-serif', letterSpacing: '0.231px' }}
             >
               <BarChart3 className="w-5 h-5 text-[#0071e3]" />
-              Rating Distribution
+              Phân bố số sao
             </h3>
             <p className="text-[13px] text-tertiary mt-1 leading-[1.47]" style={{ letterSpacing: '-0.374px' }}>
-              Review count by star rating across all branches
+              Số lượng đánh giá theo từng mức sao trên toàn hệ thống
             </p>
           </div>
           <div className="p-6 pt-0">
@@ -220,7 +227,7 @@ export default function GlobalView({ state }: { state: DashboardState }) {
               className="text-[21px] font-bold text-primary leading-[1.19]"
               style={{ fontFamily: '"SF Pro Display", -apple-system, sans-serif', letterSpacing: '0.231px' }}
             >
-              Critical Alerts
+              Cảnh báo quan trọng
             </h3>
             {globalData.criticalAlerts.length > 0 && (
               <span className="px-2 py-0.5 bg-[#ff453a]/10 text-[#ff453a] text-[11px] font-bold rounded-[980px] tabular-nums">
@@ -234,11 +241,11 @@ export default function GlobalView({ state }: { state: DashboardState }) {
               className="px-3 py-1.5 text-[12px] font-semibold text-tertiary hover:text-secondary bg-[var(--surface-3)] hover:bg-[var(--surface-2)] rounded-[980px] transition-all"
               style={{ letterSpacing: '-0.12px' }}
             >
-              {criticalSort === 'date' ? 'Newest first' : 'Lowest first'}
+              {criticalSort === 'date' ? 'Mới nhất trước' : 'Sao thấp trước'}
             </button>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ff453a]/8 rounded-[980px]">
               <div className="w-1.5 h-1.5 rounded-full bg-[#ff453a] animate-pulse" />
-              <span className="text-[11px] font-bold text-[#ff453a] uppercase tracking-wider" style={{ letterSpacing: '0.05em' }}>Live</span>
+              <span className="text-[11px] font-bold text-[#ff453a] uppercase tracking-wider" style={{ letterSpacing: '0.05em' }}>Trực tiếp</span>
             </div>
           </div>
         </div>
@@ -251,10 +258,10 @@ export default function GlobalView({ state }: { state: DashboardState }) {
               </div>
               <div>
                 <p className="text-[17px] font-bold text-primary leading-[1.19]" style={{ letterSpacing: '0.231px' }}>
-                  All clear
+                  Mọi thứ ổn
                 </p>
                 <p className="text-[13px] text-tertiary mt-1.5 leading-[1.47]" style={{ letterSpacing: '-0.374px' }}>
-                  No critical reviews detected in the last 30 days
+                  Không có đánh giá nghiêm trọng nào trong 30 ngày gần đây
                 </p>
               </div>
             </div>
@@ -267,6 +274,10 @@ export default function GlobalView({ state }: { state: DashboardState }) {
                     setActiveTab(alert.placeId);
                     setViewMode('branch');
                     setHighlightedReviewId(alert.reviewId);
+                    const cinema = cinemasWithLatest.find((item) => item.placeId === alert.placeId);
+                    if (cinema) {
+                      router.push(`/${buildPlaceSlug(cinema.name, cinema.placeId)}?reviewId=${alert.reviewId}`);
+                    }
                   }}
                   className="flex flex-col gap-4 p-5 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border-none rounded-[8px] text-left transition-all group active:scale-[0.98] shadow-sm hover:shadow-product"
                 >
@@ -309,7 +320,7 @@ export default function GlobalView({ state }: { state: DashboardState }) {
                     style={{ letterSpacing: '-0.374px' }}
                   >
                     {alert.text ? `"${alert.text}"` : (
-                      <span className="opacity-40 italic">No review text provided</span>
+                      <span className="opacity-40 italic">Không có nội dung đánh giá</span>
                     )}
                   </p>
 

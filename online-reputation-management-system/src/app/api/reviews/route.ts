@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const cinemaId = searchParams.get('cinemaId') || undefined;
   const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '50');
+  const limit = parseInt(searchParams.get('limit') || '24');
 
   try {
     const result = await convexQuery<any>('reviews:paginatedByPlace', {

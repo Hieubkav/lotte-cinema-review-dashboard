@@ -1,13 +1,15 @@
 import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Globe, Search, X, LayoutDashboard, TrendingUp, Building2, DownloadCloud, Activity, ArrowUpDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getTags } from '../utils';
 import { DashboardState } from '../hooks/useDashboardData';
 
 export default function DashboardSidebar({ state }: { state: DashboardState }) {
+  const pathname = usePathname();
   const {
     viewMode, setViewMode,
-    activeTab, setActiveTab,
     cinemaSearchQuery, setCinemaSearchQuery,
     sidebarSort, setSidebarSort,
     filteredCinemas,
@@ -50,7 +52,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
     setSidebarSort((s: string) => s === 'name' ? 'rating-desc' : s === 'rating-desc' ? 'rating-asc' : 'name');
   };
 
-  const sortLabel = sidebarSort === 'name' ? 'A–Z' : sidebarSort === 'rating-desc' ? '★ High' : '★ Low';
+  const sortLabel = sidebarSort === 'name' ? 'A–Z' : sidebarSort === 'rating-desc' ? '★ Cao' : '★ Thấp';
 
   return (
     <>
@@ -86,7 +88,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
                   ORMS
                 </p>
                 <p className="text-[11px] text-tertiary mt-1 uppercase font-bold tracking-wider leading-none">
-                  Reputation Monitor
+                  Theo dõi đánh giá
                 </p>
               </div>
             </div>
@@ -101,20 +103,21 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
 
         {/* Nav items */}
         <nav className="px-3 flex flex-col gap-1">
-          <button
+          <Link
+            href="/"
             onClick={() => { setViewMode('global'); setIsMobileSidebarOpen(false); }}
             className={`
               w-full flex items-center gap-3 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-all text-left
-              ${viewMode === 'global'
+              ${pathname === '/'
                 ? 'bg-[#0071e3]/10 text-[#0071e3]'
                 : 'text-secondary hover:text-primary hover:bg-[var(--surface-2)]'
               }
             `}
             style={{ letterSpacing: '-0.224px' }}
           >
-            <Globe className={`w-4 h-4 flex-shrink-0 ${viewMode === 'global' ? 'text-[#0071e3]' : ''}`} />
-            Overview
-          </button>
+            <Globe className={`w-4 h-4 flex-shrink-0 ${pathname === '/' ? 'text-[#0071e3]' : ''}`} />
+            Tổng quan
+          </Link>
         </nav>
 
         {/* Cinema list */}
@@ -125,12 +128,12 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
               className="text-[11px] font-bold text-tertiary uppercase tracking-wider"
               style={{ letterSpacing: '0.05em' }}
             >
-              Branches
+              Chi nhánh
             </p>
             <button
               onClick={cycleSidebarSort}
               className="flex items-center gap-1 px-2 py-1 text-[11px] text-tertiary hover:text-secondary rounded-[6px] transition-colors"
-              title="Change sort"
+              title="Đổi cách sắp xếp"
             >
               <ArrowUpDown className="w-3 h-3" />
               <span>{sortLabel}</span>
@@ -142,7 +145,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-tertiary" />
             <input
               type="text"
-              placeholder="Find branch..."
+              placeholder="Tìm chi nhánh..."
               value={cinemaSearchQuery}
               onChange={e => setCinemaSearchQuery(e.target.value)}
               className="w-full h-8 bg-[var(--surface-3)] border-none focus:bg-[var(--surface-2)] rounded-[11px] pl-9 pr-8 text-[13px] text-primary placeholder:text-tertiary outline-none transition-all"
@@ -162,12 +165,13 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
           <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
             <div className="flex flex-col gap-0.5">
               {filteredCinemas.map((c) => {
-                const isActive = viewMode === 'branch' && activeTab === c.placeId;
+                const isActive = pathname === `/${c.slug}`;
                 const shortName = (c.place_name || '').replace(/LOTTE Cinema\s*/gi, '').trim() || c.name || 'Unknown';
                 return (
-                  <button
+                  <Link
+                    href={`/${c.slug}`}
                     key={c.place_id}
-                    onClick={() => { setViewMode('branch'); setActiveTab(c.placeId); setIsMobileSidebarOpen(false); }}
+                    onClick={() => { setViewMode('branch'); setIsMobileSidebarOpen(false); }}
                     className={`
                       group w-full flex items-center justify-between px-3 py-2 rounded-[8px] text-left transition-all
                       ${isActive
@@ -197,7 +201,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
                         </span>
                       )}
                     </div>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -212,7 +216,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
             style={{ letterSpacing: '-0.12px' }}
           >
             <DownloadCloud className="w-4 h-4" />
-            Export Audit
+            Xuất báo cáo
           </button>
         </div>
       </aside>

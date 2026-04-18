@@ -24,7 +24,7 @@ export default function DashboardHeader({ state }: { state: DashboardState }) {
   }, []);
 
   const isDark = mounted && resolvedTheme === 'dark';
-  const pageTitle = viewMode === 'global' ? 'Overview' : (activeCinema?.name ?? '');
+  const pageTitle = viewMode === 'global' ? 'Tổng quan' : (activeCinema?.name ?? '');
 
   return (
     <header className="flex items-center justify-between w-full gap-4">
@@ -48,13 +48,13 @@ export default function DashboardHeader({ state }: { state: DashboardState }) {
           {viewMode === 'branch' && activeCinema && (
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] text-white/50 font-medium uppercase tracking-widest">Live</span>
+              <span className="text-[10px] text-white/50 font-medium uppercase tracking-widest">Đang theo dõi</span>
             </div>
           )}
           {viewMode === 'global' && (
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] text-white/50 font-medium uppercase tracking-widest">44 nodes online</span>
+              <span className="text-[10px] text-white/50 font-medium uppercase tracking-widest">Toàn hệ thống</span>
             </div>
           )}
         </div>
@@ -65,7 +65,7 @@ export default function DashboardHeader({ state }: { state: DashboardState }) {
             target="_blank"
             rel="noopener noreferrer"
             className="flex-shrink-0 p-2 text-[#2997ff] hover:bg-white/10 rounded-apple transition-colors"
-            title="View on Google Maps"
+            title="Xem trên Google Maps"
           >
             <ExternalLink className="w-4 h-4" />
           </a>
@@ -79,7 +79,7 @@ export default function DashboardHeader({ state }: { state: DashboardState }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
           <input
             type="text"
-            placeholder="Search reviews..."
+            placeholder="Tìm đánh giá..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full h-8 bg-white/10 border-none focus:bg-white/[0.15] rounded-[11px] pl-9 pr-8 text-[13px] text-white placeholder:text-white/30 outline-none transition-all"
@@ -99,7 +99,7 @@ export default function DashboardHeader({ state }: { state: DashboardState }) {
         <button
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
           className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-[8px] transition-colors"
-          title="Toggle theme"
+          title="Đổi giao diện"
         >
           {mounted && (isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />)}
         </button>
@@ -108,7 +108,7 @@ export default function DashboardHeader({ state }: { state: DashboardState }) {
         <button
           onClick={() => setIsActivityDrawerOpen(true)}
           className={`relative p-2 rounded-[8px] transition-all duration-300 ${isActivityDrawerOpen ? 'text-white bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-          title="Show active tasks"
+          title="Xem hoạt động"
         >
           <Activity className={`w-4 h-4 ${isSyncing ? 'animate-pulse' : ''}`} />
           {syncLogs.length > 0 && (
@@ -127,7 +127,7 @@ export default function DashboardHeader({ state }: { state: DashboardState }) {
             ? <Loader2 className="w-3 h-3 animate-spin" />
             : <RefreshCcw className="w-3 h-3" />
           }
-          <span className="hidden sm:inline">Sync</span>
+          <span className="hidden sm:inline">Đồng bộ</span>
         </button>
       </div>
     </header>
