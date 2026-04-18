@@ -25,4 +25,4 @@ This file serves to lock the design parameters for this workspace.
 1. Establish design system tokens inside `index.css` (or `globals.css`).
 2. Compose components using defined styles.
 3. Build complete pages maintaining consistent spacing, typography, and responsive layouts.
-4. Finalize with SEO best practices (semantic HTML, correct headers, unique tracking IDs). 
+4. Finalize with SEO best practices (semantic HTML, correct headers, unique tracking IDs).
