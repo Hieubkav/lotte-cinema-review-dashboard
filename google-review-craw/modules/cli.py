@@ -55,6 +55,10 @@ def _add_scrape_args(parser: argparse.ArgumentParser) -> None:
         help="run Chrome in the background",
     )
     parser.add_argument(
+        "--headed", action="store_true",
+        help="run Chrome with a visible browser window",
+    )
+    parser.add_argument(
         "-s", "--sort", dest="sort_by",
         choices=("newest", "highest", "lowest", "relevance"),
         default=None, help="sorting order for reviews",

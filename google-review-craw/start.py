@@ -43,6 +43,8 @@ def _apply_scrape_overrides(config, args):
         overrides["scrape_mode"] = "full"
     if getattr(args, "stop_on_match", False):
         overrides["stop_threshold"] = overrides.get("stop_threshold") or 3
+    if getattr(args, "headed", False):
+        overrides["headless"] = False
 
     for key, value in overrides.items():
         if value is not None:

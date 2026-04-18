@@ -103,7 +103,7 @@ export default function ActivityDrawer({ state }: { state: DashboardState }) {
                 <div className="flex items-center gap-3">
                   <RefreshCcw className="w-4 h-4 text-[#0071e3] animate-spin" />
                   <p className="text-[12px] font-semibold text-[#0071e3] leading-[1.33]" style={{ letterSpacing: '-0.12px' }}>
-                    Scraper is working in background...
+                    Scraper đang chạy foreground và mở browser...
                   </p>
                 </div>
               </div>
