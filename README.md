@@ -1,0 +1,1 @@
+PS E:\NextJS\persional_project\lotte_gg_map\google-review-craw> .\.venv\Scripts\python.exe start.py scrape --config config.yaml --headed
