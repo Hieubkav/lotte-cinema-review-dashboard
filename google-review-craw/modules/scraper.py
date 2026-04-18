@@ -6,6 +6,7 @@ Uses SeleniumBase UC Mode for enhanced anti-detection and better Chrome version 
 import logging
 import os
 import platform
+import random
 import re
 import threading
 import time
@@ -160,6 +161,9 @@ REVIEW_WORDS = {
     "отзиви", "ревюта", "мнения", "коментари", "оценки"
 }
 
+MIN_NEW_CARDS_FOR_FAST_SLEEP = 5
+BATCH_UPSERT_SIZE = 20
+
 
 class GoogleReviewsScraper:
     """Main scraper class for Google Maps reviews"""
@@ -181,6 +185,10 @@ class GoogleReviewsScraper:
             self.progress_callback(stage, message, **kwargs)
         else:
             log.info(f"[{stage}] {message}")
+
+    @staticmethod
+    def _adaptive_sleep(base: float, jitter: float = 0.15):
+        time.sleep(max(0.05, base + random.uniform(-jitter, jitter)))
 
     @staticmethod
     def _db_review_to_legacy(db_review: Dict[str, Any]) -> Dict[str, Any]:
@@ -1373,7 +1381,7 @@ class GoogleReviewsScraper:
 
             # Extra wait after clicking reviews tab to ensure page loads
             log.info("Waiting for reviews page to fully load...")
-            time.sleep(3)
+            self._adaptive_sleep(1.2)
 
             # Wait for page to be fully interactive
             try:
@@ -1401,7 +1409,7 @@ class GoogleReviewsScraper:
 
             # Add a longer wait after setting sort to allow results to load
             log.info("Waiting for reviews to render...")
-            time.sleep(3)
+            self._adaptive_sleep(1.0)
 
             # Use try-except to handle cases where the pane is not found
             # Try multiple selectors for the reviews pane
@@ -1479,9 +1487,9 @@ class GoogleReviewsScraper:
                         attempts += 1
                         # Try aggressive scrolling
                         driver.execute_script(scroll_script)
-                        time.sleep(1)
+                        self._adaptive_sleep(0.35, 0.1)
                         driver.execute_script("window.scrollBy(0, 1000);")  # Extra scroll
-                        time.sleep(1.5)
+                        self._adaptive_sleep(0.75, 0.15)
                         continue
                     else:
                         consecutive_no_cards = 0  # Reset counter when we find cards
@@ -1514,6 +1522,7 @@ class GoogleReviewsScraper:
                     batch_total = len(fresh_cards) + batch_seen_count
                     batch_unchanged = batch_seen_count
 
+                    pending_reviews = []
                     for card in fresh_cards:
                         try:
                             raw = RawReview.from_card(card)
@@ -1542,40 +1551,61 @@ class GoogleReviewsScraper:
                             "owner_text": raw.owner_text,
                             "photos": raw.photos,
                         }
-                        result = self.review_db.upsert_review(
-                            place_id, review_dict, session_id,
-                            scrape_mode=self.scrape_mode,
+                        pending_reviews.append(review_dict)
+
+                        if len(pending_reviews) >= BATCH_UPSERT_SIZE:
+                            batch_result = self.review_db.upsert_reviews_batch(
+                                place_id, pending_reviews, session_id, scrape_mode=self.scrape_mode
+                            )
+                            for key, value in batch_result.items():
+                                batch_stats[key] = batch_stats.get(key, 0) + value
+                            for review in pending_reviews:
+                                if review["review_id"] not in seen:
+                                    seen.add(review["review_id"])
+                                    progress.advance(task_id)
+                            if batch_result.get("new", 0) == 0:
+                                consecutive_seen_items += len(pending_reviews)
+                            else:
+                                consecutive_seen_items = 0
+                            batch_unchanged += batch_result.get("unchanged", 0)
+                            for review in pending_reviews:
+                                if review["review_id"] and review["review_id"] not in changed_ids:
+                                    changed_ids.add(review["review_id"])
+                            pending_reviews = []
+                            idle = 0
+                            attempts = 0
+
+                    if pending_reviews:
+                        batch_result = self.review_db.upsert_reviews_batch(
+                            place_id, pending_reviews, session_id, scrape_mode=self.scrape_mode
                         )
-                        batch_stats[result] = batch_stats.get(result, 0) + 1
-                        
-                        # Increment seen counter for 'unchanged' or 'updated' (existing records)
-                        # Reset for 'new' (truly new records)
-                        if result in ["unchanged", "updated"]:
-                            consecutive_seen_items += 1
+                        for key, value in batch_result.items():
+                            batch_stats[key] = batch_stats.get(key, 0) + value
+                        for review in pending_reviews:
+                            if review["review_id"] not in seen:
+                                seen.add(review["review_id"])
+                                progress.advance(task_id)
+                        if batch_result.get("new", 0) == 0:
+                            consecutive_seen_items += len(pending_reviews)
                         else:
                             consecutive_seen_items = 0
-
-                        if consecutive_seen_items >= 5:
-                            log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews")
-                            idle = 999
-                            break
-                        if result != "unchanged":
-                            changed_ids.add(raw.id)
-                        if result == "unchanged":
-                            batch_unchanged += 1
-                        seen.add(raw.id)
-                        progress.advance(task_id)
+                        batch_unchanged += batch_result.get("unchanged", 0)
+                        for review in pending_reviews:
+                            if review["review_id"] and review["review_id"] not in changed_ids:
+                                changed_ids.add(review["review_id"])
                         idle = 0
                         attempts = 0
-                        
-                        # Report progress continuously
-                        if len(seen) % 5 == 0 or len(seen) < 10:
-                            self._report_progress("scraped", f"Found {len(seen)} reviews", count=len(seen))
 
-                        if max_reviews > 0 and len(seen) >= max_reviews:
-                            log.info("Reached max_reviews limit (%d), stopping.", max_reviews)
-                            idle = 999
-                            break
+                    if len(seen) % 5 == 0 or len(seen) < 10:
+                        self._report_progress("scraped", f"Found {len(seen)} reviews", count=len(seen))
+
+                    if consecutive_seen_items >= 5:
+                        log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews")
+                        idle = 999
+
+                    if max_reviews > 0 and len(seen) >= max_reviews:
+                        log.info("Reached max_reviews limit (%d), stopping.", max_reviews)
+                        idle = 999
 
                     # Batch-level stop: entire scroll iteration was unchanged.
                     # Require min 3 reviews in the batch to avoid false stops
@@ -1605,9 +1635,9 @@ class GoogleReviewsScraper:
                         try:
                             # Try multiple scroll methods
                             driver.execute_script(scroll_script)
-                            time.sleep(0.5)
+                            self._adaptive_sleep(0.2, 0.05)
                             driver.execute_script("window.scrollBy(0, 500);")  # Extra scroll
-                            time.sleep(0.5)
+                            self._adaptive_sleep(0.2, 0.05)
                         except Exception as e:
                             log.warning(f"Error scrolling: {e}")
                     else:
@@ -1625,7 +1655,7 @@ class GoogleReviewsScraper:
                                 # Try clicking the last visible review to force loading
                                 try:
                                     driver.execute_script("arguments[0].lastElementChild.scrollIntoView();", pane)
-                                    time.sleep(2)
+                                    self._adaptive_sleep(0.8, 0.2)
                                 except:
                                     pass
                                 scroll_stuck_count = 0
@@ -1644,13 +1674,13 @@ class GoogleReviewsScraper:
                         driver.execute_script("window.scrollBy(0, 300);")
 
                     # Dynamic sleep: sleep less when processing many reviews, more when finding none
-                    if len(fresh_cards) > 5:
-                        sleep_time = 0.7
+                    if len(fresh_cards) > MIN_NEW_CARDS_FOR_FAST_SLEEP:
+                        sleep_time = 0.25
                     elif len(fresh_cards) == 0:
-                        sleep_time = 2.0  # Wait longer when finding nothing (let page load)
+                        sleep_time = 0.8
                     else:
-                        sleep_time = 1.0
-                    time.sleep(sleep_time)
+                        sleep_time = 0.45
+                    self._adaptive_sleep(sleep_time, 0.1)
 
                 except StaleElementReferenceException:
                     # The pane or other element went stale, try to re-find
@@ -1664,7 +1694,7 @@ class GoogleReviewsScraper:
                 except Exception as e:
                     log.warning(f"Error during review processing: {e}")
                     attempts += 1
-                    time.sleep(1)
+                    self._adaptive_sleep(0.4, 0.1)
 
             progress.stop()
 

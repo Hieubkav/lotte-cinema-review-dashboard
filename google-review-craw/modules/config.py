@@ -28,6 +28,7 @@ DEFAULT_CONFIG = {
     "max_reviews": 0,
     "max_scroll_attempts": 50,
     "scroll_idle_limit": 15,
+    "scrape_workers": 1,
     "use_mongodb": True,
     "mongodb": {
         "uri": "mongodb://localhost:27017",
@@ -97,7 +98,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
         log.warning("Invalid scrape_mode '%s', falling back to 'update'", mode)
         config["scrape_mode"] = "update"
 
-    for key in ("max_reviews", "stop_threshold", "max_scroll_attempts", "scroll_idle_limit"):
+    for key in ("max_reviews", "stop_threshold", "max_scroll_attempts", "scroll_idle_limit", "scrape_workers"):
         val = config.get(key)
         if not isinstance(val, int) or val < 0:
             config[key] = DEFAULT_CONFIG[key]

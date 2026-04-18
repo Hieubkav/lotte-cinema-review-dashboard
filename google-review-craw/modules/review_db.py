@@ -592,6 +592,33 @@ class ReviewDB:
 
         return stats
 
+    def upsert_reviews_batch(self, place_id: str, batch: List[Dict[str, Any]],
+                             session_id: int = None, scrape_mode: str = "update") -> Dict[str, int]:
+        """Upsert a batch of reviews with a single outer transaction."""
+        stats = {"new": 0, "updated": 0, "restored": 0, "unchanged": 0}
+        if not batch:
+            return stats
+
+        with self.transaction():
+            for review in batch:
+                result = self.upsert_review(place_id, review, session_id, scrape_mode=scrape_mode)
+                stats[result] = stats.get(result, 0) + 1
+
+        count_row = self.backend.fetchone(
+            "SELECT COUNT(*) as cnt FROM reviews "
+            "WHERE place_id = ? AND is_deleted = 0",
+            (place_id,)
+        )
+        if count_row:
+            self.update_place_snapshot(
+                place_id,
+                captured_total_reviews=count_row["cnt"],
+                last_sync_status="reviews_synced",
+                last_sync_error=None,
+            )
+
+        return stats
+
     def review_changed(self, review_id: str, place_id: str,
                        new_content_hash: str) -> bool:
         """Check if a review's content has changed since last scrape."""

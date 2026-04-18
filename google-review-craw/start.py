@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import unquote
@@ -327,7 +328,11 @@ def _run_scrape(config, args):
     if not getattr(args, "url", None):
         businesses = _prompt_sync_businesses(businesses)
 
-    for i, biz in enumerate(businesses):
+    scrape_workers = int(config.get("scrape_workers") or 1)
+    if getattr(args, "url", None):
+        scrape_workers = 1
+
+    def _scrape_single_business(i, biz):
         biz_config = _build_business_config(config, biz)
         url = biz_config.get("url", "")
         if len(businesses) > 1:
@@ -337,16 +342,16 @@ def _run_scrape(config, args):
         try:
             success = scraper.scrape()
             if not success:
-                continue
+                return False, url, None, None
 
             place_id = getattr(scraper, "last_place_id", None)
             if not place_id:
-                continue
+                return True, url, None, None
 
             place_row = scraper.review_db.get_place(place_id) or {}
             reviews = scraper.review_db.get_reviews(place_id)
             if not reviews:
-                continue
+                return True, url, place_row.get("place_name") or url, 0
 
             place_snapshot = {
                 "place_id": place_id,
@@ -363,8 +368,23 @@ def _run_scrape(config, args):
             }
             _sync_place_to_convex(biz_config, place_snapshot, reviews)
             print(f"Đã sync Convex: {place_snapshot['place_name']} ({len(reviews)} reviews)")
+            return True, url, place_snapshot["place_name"], len(reviews)
         finally:
             scraper.review_db.close()
+
+    if scrape_workers <= 1 or len(businesses) <= 1:
+        for i, biz in enumerate(businesses):
+            _scrape_single_business(i, biz)
+        return
+
+    max_workers = min(scrape_workers, len(businesses))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {
+            executor.submit(_scrape_single_business, i, biz): (i, biz)
+            for i, biz in enumerate(businesses)
+        }
+        for future in as_completed(future_map):
+            future.result()
 
 
 def _run_export(config, args):
