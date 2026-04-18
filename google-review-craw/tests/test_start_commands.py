@@ -202,3 +202,58 @@ class TestInteractiveBusinessSelection:
             selected = _prompt_sync_businesses(businesses)
 
         assert selected == [businesses[1]]
+
+
+class TestConvexSyncHelpers:
+    def test_build_metrics_payload(self):
+        from start import _build_metrics_payload
+
+        reviews = [
+            {"rating": 5, "review_date": "2026-04-10T00:00:00+00:00"},
+            {"rating": 3, "review_date": "2026-01-01T00:00:00+00:00"},
+        ]
+
+        metrics = _build_metrics_payload(reviews, 4.2, 480)
+        assert metrics["avgRating"] == 4.2
+        assert metrics["totalReviews"] == 480
+        assert metrics["capturedReviews"] == 2
+        assert metrics["starDistribution"]["star5"] == 1
+        assert metrics["starDistribution"]["star3"] == 1
+
+    @patch("start.subprocess.run")
+    def test_sync_place_to_convex_runs_required_mutations(self, mock_run, tmp_path):
+        from start import _sync_place_to_convex
+
+        mock_run.return_value.returncode = 0
+        project_root = tmp_path / "lotte_gg_map"
+        crawler_root = project_root / "google-review-craw"
+        web_root = project_root / "online-reputation-management-system"
+        scripts_dir = web_root / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (web_root / ".env.local").write_text("NEXT_PUBLIC_CONVEX_URL=test\n", encoding="utf-8")
+        (scripts_dir / "convex-run.js").write_text("// test", encoding="utf-8")
+        fake_start = crawler_root / "start.py"
+        fake_start.parent.mkdir(parents=True)
+        fake_start.write_text("", encoding="utf-8")
+
+        place_snapshot = {
+            "place_id": "p1",
+            "place_name": "Test Place",
+            "original_url": "https://example.com",
+            "resolved_url": "https://example.com",
+            "latitude": None,
+            "longitude": None,
+            "last_scraped": "2026-04-18T00:00:00+00:00",
+            "official_total_reviews": 10,
+            "official_avg_rating": 4.5,
+            "captured_total_reviews": 2,
+        }
+        reviews = [
+            {"review_id": "r1", "author": "A", "profile_picture": "", "rating": 5, "review_text": {"vi": "Hay"}, "review_date": "2026-04-18T00:00:00+00:00", "raw_date": "today", "likes": 1},
+            {"review_id": "r2", "author": "B", "profile_picture": "", "rating": 4, "review_text": {"en": "Good"}, "review_date": "2026-04-01T00:00:00+00:00", "raw_date": "week", "likes": 0},
+        ]
+
+        with patch("start.Path.resolve", return_value=fake_start):
+            _sync_place_to_convex({}, place_snapshot, reviews)
+
+        assert mock_run.call_count == 3

@@ -7,6 +7,8 @@ Main entry point supporting scrape + management commands.
 """
 
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote
@@ -95,6 +97,128 @@ def _build_business_config(base_config, overrides):
             merged[key] = value
     resolve_aliases(merged)
     return merged
+
+
+def _build_metrics_payload(reviews, official_avg_rating, official_total_reviews):
+    """Build daily metrics payload from scraped reviews."""
+    stars = {"star1": 0, "star2": 0, "star3": 0, "star4": 0, "star5": 0}
+    rating_sum = 0
+
+    for review in reviews:
+        rating = int(review.get("rating") or 0)
+        rating_sum += rating
+        if rating == 1:
+            stars["star1"] += 1
+        elif rating == 2:
+            stars["star2"] += 1
+        elif rating == 3:
+            stars["star3"] += 1
+        elif rating == 4:
+            stars["star4"] += 1
+        elif rating == 5:
+            stars["star5"] += 1
+
+    sentiment_score = round(rating_sum / len(reviews), 2) if reviews else 0
+    threshold = datetime.now(timezone.utc) - timedelta(days=30)
+    reviews_last_30d = 0
+    for review in reviews:
+        iso_date = review.get("review_date")
+        if not iso_date:
+            continue
+        try:
+            parsed = datetime.fromisoformat(str(iso_date).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        if parsed >= threshold:
+            reviews_last_30d += 1
+
+    return {
+        "avgRating": float(official_avg_rating or 0),
+        "totalReviews": int(official_total_reviews or 0),
+        "capturedReviews": len(reviews),
+        "sentimentScore": sentiment_score,
+        "density30d": round(reviews_last_30d / 30, 3),
+        "reviewsLast30d": reviews_last_30d,
+        "starDistribution": stars,
+        "date": datetime.now(timezone.utc).date().isoformat(),
+    }
+
+
+def _sync_place_to_convex(config, place_snapshot, reviews):
+    """Push scraped SQLite data into Convex for frontend consumption."""
+    project_root = Path(__file__).resolve().parents[1]
+    web_root = project_root.parent / "online-reputation-management-system"
+    if not web_root.exists():
+        raise RuntimeError(f"Không tìm thấy web app để sync Convex: {web_root}")
+
+    env_local = web_root / ".env.local"
+    if not env_local.exists():
+        raise RuntimeError(f"Thiếu file Convex env: {env_local}")
+
+    convex_script = web_root / "scripts" / "convex-run.js"
+    if not convex_script.exists():
+        raise RuntimeError(f"Thiếu script convex-run: {convex_script}")
+
+    place_payload = {
+        "placeId": place_snapshot["place_id"],
+        "name": place_snapshot["place_name"] or place_snapshot["place_id"],
+        "originalUrl": place_snapshot.get("original_url"),
+        "resolvedUrl": place_snapshot.get("resolved_url"),
+        "latitude": place_snapshot.get("latitude"),
+        "longitude": place_snapshot.get("longitude"),
+        "officialTotalReviews": int(place_snapshot.get("official_total_reviews") or place_snapshot.get("total_reviews") or len(reviews)),
+        "officialAvgRating": float(place_snapshot.get("official_avg_rating") or 0),
+        "capturedTotalReviews": int(place_snapshot.get("captured_total_reviews") or len(reviews)),
+        "lastScrapedAt": place_snapshot.get("last_scraped"),
+        "lastSyncStatus": "completed",
+        "lastSyncError": None,
+    }
+
+    review_payload = []
+    for row in reviews:
+        text_map = row.get("review_text", {}) if isinstance(row.get("review_text"), dict) else {}
+        text = ""
+        if text_map:
+            text = text_map.get("vi") or text_map.get("en") or next(iter(text_map.values()), "")
+        review_payload.append({
+            "reviewId": row.get("review_id"),
+            "authorName": row.get("author"),
+            "authorThumbnail": row.get("profile_picture"),
+            "rating": float(row.get("rating") or 0),
+            "text": text,
+            "isoDate": row.get("review_date") or None,
+            "rawDate": row.get("raw_date") or None,
+            "likes": int(row.get("likes") or 0),
+        })
+
+    metrics_payload = {
+        "placeId": place_payload["placeId"],
+        **_build_metrics_payload(
+            reviews,
+            place_payload["officialAvgRating"],
+            place_payload["officialTotalReviews"],
+        ),
+    }
+
+    commands = [
+        ("places:upsert", place_payload),
+        ("reviews:upsertManyForPlace", {"placeId": place_payload["placeId"], "reviews": review_payload}),
+        ("metrics:upsertForPlace", metrics_payload),
+    ]
+
+    env = os.environ.copy()
+    for function_name, payload in commands:
+        result = subprocess.run(
+            ["node", str(convex_script), function_name, json.dumps(payload, ensure_ascii=False)],
+            cwd=str(web_root),
+            env=env,
+            check=False,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Sync Convex thất bại ở {function_name} (exit {result.returncode})")
 
 
 def _extract_business_label(business, index):
@@ -196,7 +320,34 @@ def _run_scrape(config, args):
 
         scraper = GoogleReviewsScraper(biz_config)
         try:
-            scraper.scrape()
+            success = scraper.scrape()
+            if not success:
+                continue
+
+            place_id = getattr(scraper, "last_place_id", None)
+            if not place_id:
+                continue
+
+            place_row = scraper.review_db.get_place(place_id) or {}
+            reviews = scraper.review_db.get_reviews(place_id)
+            if not reviews:
+                continue
+
+            place_snapshot = {
+                "place_id": place_id,
+                "place_name": place_row.get("place_name") or biz_config.get("custom_params", {}).get("company") or url,
+                "original_url": place_row.get("original_url") or url,
+                "resolved_url": place_row.get("resolved_url") or url,
+                "latitude": place_row.get("latitude"),
+                "longitude": place_row.get("longitude"),
+                "last_scraped": place_row.get("last_scraped"),
+                "total_reviews": place_row.get("official_total_reviews", place_row.get("total_reviews", len(reviews))),
+                "official_total_reviews": place_row.get("official_total_reviews", len(reviews)),
+                "official_avg_rating": place_row.get("official_avg_rating", 0),
+                "captured_total_reviews": place_row.get("captured_total_reviews", len(reviews)),
+            }
+            _sync_place_to_convex(biz_config, place_snapshot, reviews)
+            print(f"Đã sync Convex: {place_snapshot['place_name']} ({len(reviews)} reviews)")
         finally:
             scraper.review_db.close()
 
