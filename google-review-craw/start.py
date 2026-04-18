@@ -149,7 +149,7 @@ def _build_metrics_payload(reviews, official_avg_rating, official_total_reviews)
 def _sync_place_to_convex(config, place_snapshot, reviews):
     """Push scraped SQLite data into Convex for frontend consumption."""
     project_root = Path(__file__).resolve().parents[1]
-    web_root = project_root.parent / "online-reputation-management-system"
+    web_root = project_root / "online-reputation-management-system"
     if not web_root.exists():
         raise RuntimeError(f"Không tìm thấy web app để sync Convex: {web_root}")
 
