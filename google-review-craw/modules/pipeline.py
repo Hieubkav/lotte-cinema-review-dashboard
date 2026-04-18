@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, Any, Set
 
 from modules.date_converter import DateConverter
-from modules.image_handler import ImageHandler
+from modules.image_handler import ImageHandler, place_id_to_fs_segment
 from modules.s3_handler import S3Handler
 
 log = logging.getLogger("scraper")
@@ -94,6 +94,7 @@ class S3Task(SyncTask):
     def run(self, reviews: Dict[str, Dict[str, Any]], place_id: str) -> None:
         if place_id:
             self._handler.set_place_id(place_id)
+        place_dir = place_id_to_fs_segment(place_id) if place_id else ""
 
         # Collect local files from reviews
         files_to_upload: Dict[str, tuple] = {}
@@ -101,7 +102,7 @@ class S3Task(SyncTask):
             # Review images
             for filename in review.get("local_images", []):
                 if filename and filename not in files_to_upload:
-                    base = self._image_dir / place_id if place_id else self._image_dir
+                    base = self._image_dir / place_dir if place_dir else self._image_dir
                     local_path = base / "reviews" / filename
                     if local_path.exists():
                         files_to_upload[filename] = (local_path, False)
@@ -109,7 +110,7 @@ class S3Task(SyncTask):
             # Profile picture
             pp = review.get("local_profile_picture")
             if pp and pp not in files_to_upload:
-                base = self._image_dir / place_id if place_id else self._image_dir
+                base = self._image_dir / place_dir if place_dir else self._image_dir
                 local_path = base / "profiles" / pp
                 if local_path.exists():
                     files_to_upload[pp] = (local_path, True)

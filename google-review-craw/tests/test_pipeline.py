@@ -19,6 +19,7 @@ from modules.pipeline import (
     S3Task,
     SyncTask,
 )
+from modules.image_handler import place_id_to_fs_segment
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +124,11 @@ class TestImageTask:
         assert passed_config["use_s3"] is False
 
 
+class TestImagePathSanitization:
+    def test_place_id_to_fs_segment_sanitizes_windows_chars(self):
+        assert place_id_to_fs_segment("0x31a08811b0e21db5:0") == "0x31a08811b0e21db5_0"
+
+
 # ---------------------------------------------------------------------------
 # S3Task
 # ---------------------------------------------------------------------------
@@ -163,7 +169,7 @@ class TestS3Task:
         }
 
         # Create the local file so it would be found
-        img_dir = Path("review_images/place123/reviews")
+        img_dir = Path(f"review_images/{place_id_to_fs_segment('place123')}/reviews")
         img_dir.mkdir(parents=True, exist_ok=True)
         (img_dir / "img1.jpg").write_bytes(b"fake")
 
@@ -174,6 +180,47 @@ class TestS3Task:
         finally:
             (img_dir / "img1.jpg").unlink(missing_ok=True)
             # cleanup dirs
+            for d in [img_dir, img_dir.parent, img_dir.parent.parent]:
+                try:
+                    d.rmdir()
+                except OSError:
+                    pass
+
+    @patch("modules.pipeline.S3Handler")
+    def test_uses_sanitized_local_folder_for_windows_place_id(self, mock_s3_cls):
+        mock_handler = MagicMock()
+        mock_handler.enabled = True
+        mock_handler.prefix = "reviews/"
+        mock_handler.profiles_folder = "profiles"
+        mock_handler.reviews_folder = "reviews"
+        mock_handler.list_existing_keys.return_value = set()
+        mock_handler.upload_images_batch.return_value = {}
+        mock_s3_cls.return_value = mock_handler
+
+        cfg = _base_config(use_s3=True, s3={"sync_mode": "update"})
+        task = S3Task(cfg)
+        place_id = "0x31a08811b0e21db5:0"
+        sanitized_place_id = place_id_to_fs_segment(place_id)
+
+        reviews = {
+            "rev1": {
+                "review_id": "rev1",
+                "local_images": ["img1.jpg"],
+                "user_images": ["https://example.com/img1.jpg"],
+            }
+        }
+
+        img_dir = Path(f"review_images/{sanitized_place_id}/reviews")
+        img_dir.mkdir(parents=True, exist_ok=True)
+        (img_dir / "img1.jpg").write_bytes(b"fake")
+
+        try:
+            task.run(reviews, place_id)
+            uploaded = mock_handler.upload_images_batch.call_args[0][0]
+            assert "img1.jpg" in uploaded
+            assert uploaded["img1.jpg"][0] == img_dir / "img1.jpg"
+        finally:
+            (img_dir / "img1.jpg").unlink(missing_ok=True)
             for d in [img_dir, img_dir.parent, img_dir.parent.parent]:
                 try:
                     d.rmdir()

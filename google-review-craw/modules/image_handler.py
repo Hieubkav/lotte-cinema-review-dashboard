@@ -6,6 +6,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, Any, Set, Tuple
+import re
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -15,6 +16,13 @@ from modules.s3_handler import S3Handler
 
 # Logger
 log = logging.getLogger("scraper")
+
+
+def place_id_to_fs_segment(place_id: str | None) -> str:
+    """Convert place_id into a filesystem-safe path segment."""
+    if not place_id:
+        return ""
+    return re.sub(r'[<>:"/\\|?*]', "_", place_id.strip())
 
 
 class ImageHandler:
@@ -59,7 +67,7 @@ class ImageHandler:
     def set_place_id(self, place_id: str):
         """Set place ID to organize images into per-business subdirectories."""
         self._place_id = place_id
-        base = self.image_dir / place_id
+        base = self.image_dir / place_id_to_fs_segment(place_id)
         self.profile_dir = base / "profiles"
         self.review_dir = base / "reviews"
 
