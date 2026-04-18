@@ -8,7 +8,6 @@ Main entry point supporting scrape + management commands.
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -159,10 +158,6 @@ def _sync_place_to_convex(config, place_snapshot, reviews):
     if not env_local.exists():
         raise RuntimeError(f"Thiếu file Convex env: {env_local}")
 
-    convex_script = web_root / "scripts" / "convex-run.js"
-    if not convex_script.exists():
-        raise RuntimeError(f"Thiếu script convex-run: {convex_script}")
-
     place_payload = {
         "placeId": place_snapshot["place_id"],
         "name": place_snapshot["place_name"] or place_snapshot["place_id"],
@@ -175,7 +170,7 @@ def _sync_place_to_convex(config, place_snapshot, reviews):
         "capturedTotalReviews": int(place_snapshot.get("captured_total_reviews") or len(reviews)),
         "lastScrapedAt": place_snapshot.get("last_scraped"),
         "lastSyncStatus": "completed",
-        "lastSyncError": None,
+        "lastSyncError": "",
     }
 
     review_payload = []
@@ -204,26 +199,41 @@ def _sync_place_to_convex(config, place_snapshot, reviews):
         ),
     }
 
-    commands = [
-        ("places:upsert", place_payload),
-        ("reviews:upsertManyForPlace", {"placeId": place_payload["placeId"], "reviews": review_payload}),
-        ("metrics:upsertForPlace", metrics_payload),
-    ]
+    payload_path = (web_root / "tmp-convex-sync-place.json").resolve()
+    payload_path.write_text(
+        json.dumps(
+            {
+                "place": place_payload,
+                "reviews": {"placeId": place_payload["placeId"], "reviews": review_payload},
+                "metrics": metrics_payload,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
-    env = os.environ.copy()
-    npx_cmd = shutil.which("npx.cmd") or shutil.which("npx")
-    if not npx_cmd:
-        raise RuntimeError("Không tìm thấy npx/npx.cmd để gọi Convex CLI")
-    for function_name, payload in commands:
+    try:
         result = subprocess.run(
-            [npx_cmd, "convex", "run", "--env-file", ".env.local", function_name, json.dumps(payload, ensure_ascii=False)],
+            [
+                "C:\\Program Files\\nodejs\\node.exe",
+                str((web_root / "scripts" / "convex-sync-place.cjs").resolve()),
+                str(payload_path),
+            ],
             cwd=str(web_root),
-            env=env,
             check=False,
             text=True,
+            capture_output=True,
+            shell=False,
         )
-        if result.returncode != 0:
-            raise RuntimeError(f"Sync Convex thất bại ở {function_name} (exit {result.returncode})")
+    finally:
+        payload_path.unlink(missing_ok=True)
+
+    if result.returncode != 0:
+        message = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(
+            f"Sync Convex thất bại ở places:upsert (exit {result.returncode})"
+            + (f": {message}" if message else "")
+        )
 
 
 def _extract_business_label(business, index):

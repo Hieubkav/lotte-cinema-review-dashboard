@@ -1,223 +1,223 @@
 # Generated from https://online-reputation-management-system.vercel.app/api/places/official
 # Total businesses: 44
 businesses:
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Moonlight&query_place_id=0x317527c07e1c02bf:0"
-    custom_params:
-      placeId: "0x317527c07e1c02bf:0"
-      company: "LOTTE Cinema Moonlight"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20V%C5%A9ng%20T%C3%A0u&query_place_id=0x31756f005238b299:0"
-    custom_params:
-      placeId: "0x31756f005238b299:0"
-      company: "LOTTE Cinema Vũng Tàu"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20%C4%90%C3%A0%20N%E1%BA%B5ng&query_place_id=0x314219010747f197:0"
-    custom_params:
-      placeId: "0x314219010747f197:0"
-      company: "LOTTE Cinema Đà Nẵng"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Goldview&query_place_id=0x31752f499dfe8911:0"
-    custom_params:
-      placeId: "0x31752f499dfe8911:0"
-      company: "LOTTE Cinema Goldview"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20C%E1%BB%99ng%20H%C3%B2a&query_place_id=0x317529cc708f5b8d:0"
-    custom_params:
-      placeId: "0x317529cc708f5b8d:0"
-      company: "LOTTE Cinema Cộng Hòa"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Vi%E1%BB%87t%20Tr%C3%AC%20-%20Vincom&query_place_id=0x31348d4f50784f23:0"
-    custom_params:
-      placeId: "0x31348d4f50784f23:0"
-      company: "LOTTE Cinema Việt Trì - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20West%20Lake&query_place_id=0x3135ab519b11053f:0"
-    custom_params:
-      placeId: "0x3135ab519b11053f:0"
-      company: "Lotte Cinema West Lake"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Thanh%20H%C3%B3a%20-%20Vincom&query_place_id=0x3136f7b3890ddf45:0"
-    custom_params:
-      placeId: "0x3136f7b3890ddf45:0"
-      company: "LOTTE Cinema Thanh Hóa - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20%C4%90%E1%BB%93ng%20H%E1%BB%9Bi%20-%20Vincom&query_place_id=0x314757572fa71447:0"
-    custom_params:
-      placeId: "0x314757572fa71447:0"
-      company: "LOTTE Cinema Đồng Hới - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20T%C3%A2y%20Ninh&query_place_id=0x310b6b6a583330c3:0"
-    custom_params:
-      placeId: "0x310b6b6a583330c3:0"
-      company: "LOTTE Cinema Tây Ninh"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BB%99i%20An&query_place_id=0x31420f1c413547a9:0"
-    custom_params:
-      placeId: "0x31420f1c413547a9:0"
-      company: "LOTTE Cinema Hội An"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vincom%20B%E1%BA%A3o%20L%E1%BB%99c&query_place_id=0x3173f6532eab2e91:0"
-    custom_params:
-      placeId: "0x3173f6532eab2e91:0"
-      company: "Lotte Cinema Vincom Bảo Lộc"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20B%C3%ACnh%20D%C6%B0%C6%A1ng&query_place_id=0x3174d791d7a2fd5d:0"
-    custom_params:
-      placeId: "0x3174d791d7a2fd5d:0"
-      company: "Lotte Cinema Bình Dương"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Ninh%20B%C3%ACnh&query_place_id=0x313670cfc42d6c23:0"
-    custom_params:
-      placeId: "0x313670cfc42d6c23:0"
-      company: "LOTTE Cinema Ninh Bình"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Cantavil&query_place_id=0x31752613499adb6f:0"
-    custom_params:
-      placeId: "0x31752613499adb6f:0"
-      company: "LOTTE Cinema Cantavil"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20H%C3%A0%20%C4%90%C3%B4ng&query_place_id=0x313452d7136e800f:0"
-    custom_params:
-      placeId: "0x313452d7136e800f:0"
-      company: "Lotte Cinema Hà Đông"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vincom%20Bien%20Hoa&query_place_id=0x3174dc2046f65577:0"
-    custom_params:
-      placeId: "0x3174dc2046f65577:0"
-      company: "Lotte Cinema Vincom Bien Hoa"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20B%E1%BA%AFc%20Ninh%20-%20Vincom&query_place_id=0x31350d538b2e2ac1:0"
-    custom_params:
-      placeId: "0x31350d538b2e2ac1:0"
-      company: "LOTTE Cinema Bắc Ninh - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Nam%20Sai%20Gon&query_place_id=0x31752f9f3904fc6d:0"
-    custom_params:
-      placeId: "0x31752f9f3904fc6d:0"
-      company: "Lotte Cinema Nam Sai Gon"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20%C4%90%E1%BB%93ng%20Nai%20-%20Lotte%20Mart%20Bien%20Hoa&query_place_id=0x3174de6b5904f523:0"
-    custom_params:
-      placeId: "0x3174de6b5904f523:0"
-      company: "Lotte Cinema Đồng Nai - Lotte Mart Bien Hoa"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Phan%20Thi%E1%BA%BFt&query_place_id=0x317683f1343ee257:0"
-    custom_params:
-      placeId: "0x317683f1343ee257:0"
-      company: "LOTTE Cinema Phan Thiết"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20L%C3%AA%20%C4%90%E1%BA%A1i%20H%C3%A0nh&query_place_id=0x31752eec3fe89d17:0"
-    custom_params:
-      placeId: "0x31752eec3fe89d17:0"
-      company: "Lotte Cinema Lê Đại Hành"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Can%20Tho%20Cai%20Rang&query_place_id=0x31a0628109025bd1:0"
-    custom_params:
-      placeId: "0x31a0628109025bd1:0"
-      company: "Lotte Cinema Can Tho Cai Rang"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Hu%E1%BA%BF&query_place_id=0x3141a11514dac771:0"
-    custom_params:
-      placeId: "0x3141a11514dac771:0"
-      company: "Lotte Cinema Huế"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20B%E1%BA%AFc%20Giang&query_place_id=0x31356d9c4a64e8b7:0"
-    custom_params:
-      placeId: "0x31356d9c4a64e8b7:0"
-      company: "LOTTE Cinema Bắc Giang"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Th%C4%83ng%20Long&query_place_id=0x3135aca8a5a928c5:0"
-    custom_params:
-      placeId: "0x3135aca8a5a928c5:0"
-      company: "Lotte Cinema Thăng Long"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20KosMo&query_place_id=0x3135ab0baa7eeaf5:0"
-    custom_params:
-      placeId: "0x3135ab0baa7eeaf5:0"
-      company: "Lotte Cinema KosMo"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Nam%20%C4%90%E1%BB%8Bnh&query_place_id=0x3135e756f1768db9:0"
-    custom_params:
-      placeId: "0x3135e756f1768db9:0"
-      company: "LOTTE Cinema Nam Định"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Phan%20Rang%20-%20Vincom&query_place_id=0x3170cf644805a273:0"
-    custom_params:
-      placeId: "0x3170cf644805a273:0"
-      company: "LOTTE Cinema Phan Rang - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Nha%20Trang%20Th%C3%A1i%20Nguy%C3%AAn%20-%20Vincom&query_place_id=0x31705d7fc0183ff7:0"
-    custom_params:
-      placeId: "0x31705d7fc0183ff7:0"
-      company: "LOTTE Cinema Nha Trang Thái Nguyên - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Ph%E1%BB%A7%20L%C3%BD%20-%20Vincom&query_place_id=0x3135cfaa82b86add:0"
-    custom_params:
-      placeId: "0x3135cfaa82b86add:0"
-      company: "LOTTE Cinema Phủ Lý - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20G%C3%B2%20V%E1%BA%A5p&query_place_id=0x317529abdd70ce51:0"
-    custom_params:
-      placeId: "0x317529abdd70ce51:0"
-      company: "Lotte Cinema Gò Vấp"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20C%C3%A0%20Mau%20-%20Vincom&query_place_id=0x31a1496273e79015:0"
-    custom_params:
-      placeId: "0x31a1496273e79015:0"
-      company: "LOTTE Cinema Cà Mau - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Tuyen%20Quang&query_place_id=0x3134ade4f0da6ffd:0"
-    custom_params:
-      placeId: "0x3134ade4f0da6ffd:0"
-      company: "Lotte Cinema Tuyen Quang"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20D%C4%A9%20An%20-%20Vincom&query_place_id=0x3174d90036d2101b:0"
-    custom_params:
-      placeId: "0x3174d90036d2101b:0"
-      company: "LOTTE Cinema Dĩ An - Vincom"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vincom%20Long%20Xuy%C3%AAn&query_place_id=0x310a72e5cb731909:0"
-    custom_params:
-      placeId: "0x310a72e5cb731909:0"
-      company: "Lotte Cinema Vincom Long Xuyên"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Th%C3%A1i%20B%C3%ACnh&query_place_id=0x3135e4d0dd5abaf9:0"
-    custom_params:
-      placeId: "0x3135e4d0dd5abaf9:0"
-      company: "Lotte Cinema Thái Bình"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BA%A3i%20Ph%C3%B2ng%20-%20Vincom&query_place_id=0x314a7bcb18100ad5:0"
-    custom_params:
-      placeId: "0x314a7bcb18100ad5:0"
-      company: "LOTTE Cinema Hải Phòng - Vincom"
-      source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Moonlight&query_place_id=0x317527c07e1c02bf:0"
+  #   custom_params:
+  #     placeId: "0x317527c07e1c02bf:0"
+  #     company: "LOTTE Cinema Moonlight"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20V%C5%A9ng%20T%C3%A0u&query_place_id=0x31756f005238b299:0"
+  #   custom_params:
+  #     placeId: "0x31756f005238b299:0"
+  #     company: "LOTTE Cinema Vũng Tàu"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20%C4%90%C3%A0%20N%E1%BA%B5ng&query_place_id=0x314219010747f197:0"
+  #   custom_params:
+  #     placeId: "0x314219010747f197:0"
+  #     company: "LOTTE Cinema Đà Nẵng"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Goldview&query_place_id=0x31752f499dfe8911:0"
+  #   custom_params:
+  #     placeId: "0x31752f499dfe8911:0"
+  #     company: "LOTTE Cinema Goldview"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20C%E1%BB%99ng%20H%C3%B2a&query_place_id=0x317529cc708f5b8d:0"
+  #   custom_params:
+  #     placeId: "0x317529cc708f5b8d:0"
+  #     company: "LOTTE Cinema Cộng Hòa"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Vi%E1%BB%87t%20Tr%C3%AC%20-%20Vincom&query_place_id=0x31348d4f50784f23:0"
+  #   custom_params:
+  #     placeId: "0x31348d4f50784f23:0"
+  #     company: "LOTTE Cinema Việt Trì - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20West%20Lake&query_place_id=0x3135ab519b11053f:0"
+  #   custom_params:
+  #     placeId: "0x3135ab519b11053f:0"
+  #     company: "Lotte Cinema West Lake"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Thanh%20H%C3%B3a%20-%20Vincom&query_place_id=0x3136f7b3890ddf45:0"
+  #   custom_params:
+  #     placeId: "0x3136f7b3890ddf45:0"
+  #     company: "LOTTE Cinema Thanh Hóa - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20%C4%90%E1%BB%93ng%20H%E1%BB%9Bi%20-%20Vincom&query_place_id=0x314757572fa71447:0"
+  #   custom_params:
+  #     placeId: "0x314757572fa71447:0"
+  #     company: "LOTTE Cinema Đồng Hới - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20T%C3%A2y%20Ninh&query_place_id=0x310b6b6a583330c3:0"
+  #   custom_params:
+  #     placeId: "0x310b6b6a583330c3:0"
+  #     company: "LOTTE Cinema Tây Ninh"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BB%99i%20An&query_place_id=0x31420f1c413547a9:0"
+  #   custom_params:
+  #     placeId: "0x31420f1c413547a9:0"
+  #     company: "LOTTE Cinema Hội An"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vincom%20B%E1%BA%A3o%20L%E1%BB%99c&query_place_id=0x3173f6532eab2e91:0"
+  #   custom_params:
+  #     placeId: "0x3173f6532eab2e91:0"
+  #     company: "Lotte Cinema Vincom Bảo Lộc"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20B%C3%ACnh%20D%C6%B0%C6%A1ng&query_place_id=0x3174d791d7a2fd5d:0"
+  #   custom_params:
+  #     placeId: "0x3174d791d7a2fd5d:0"
+  #     company: "Lotte Cinema Bình Dương"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Ninh%20B%C3%ACnh&query_place_id=0x313670cfc42d6c23:0"
+  #   custom_params:
+  #     placeId: "0x313670cfc42d6c23:0"
+  #     company: "LOTTE Cinema Ninh Bình"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Cantavil&query_place_id=0x31752613499adb6f:0"
+  #   custom_params:
+  #     placeId: "0x31752613499adb6f:0"
+  #     company: "LOTTE Cinema Cantavil"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20H%C3%A0%20%C4%90%C3%B4ng&query_place_id=0x313452d7136e800f:0"
+  #   custom_params:
+  #     placeId: "0x313452d7136e800f:0"
+  #     company: "Lotte Cinema Hà Đông"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vincom%20Bien%20Hoa&query_place_id=0x3174dc2046f65577:0"
+  #   custom_params:
+  #     placeId: "0x3174dc2046f65577:0"
+  #     company: "Lotte Cinema Vincom Bien Hoa"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20B%E1%BA%AFc%20Ninh%20-%20Vincom&query_place_id=0x31350d538b2e2ac1:0"
+  #   custom_params:
+  #     placeId: "0x31350d538b2e2ac1:0"
+  #     company: "LOTTE Cinema Bắc Ninh - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Nam%20Sai%20Gon&query_place_id=0x31752f9f3904fc6d:0"
+  #   custom_params:
+  #     placeId: "0x31752f9f3904fc6d:0"
+  #     company: "Lotte Cinema Nam Sai Gon"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20%C4%90%E1%BB%93ng%20Nai%20-%20Lotte%20Mart%20Bien%20Hoa&query_place_id=0x3174de6b5904f523:0"
+  #   custom_params:
+  #     placeId: "0x3174de6b5904f523:0"
+  #     company: "Lotte Cinema Đồng Nai - Lotte Mart Bien Hoa"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Phan%20Thi%E1%BA%BFt&query_place_id=0x317683f1343ee257:0"
+  #   custom_params:
+  #     placeId: "0x317683f1343ee257:0"
+  #     company: "LOTTE Cinema Phan Thiết"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20L%C3%AA%20%C4%90%E1%BA%A1i%20H%C3%A0nh&query_place_id=0x31752eec3fe89d17:0"
+  #   custom_params:
+  #     placeId: "0x31752eec3fe89d17:0"
+  #     company: "Lotte Cinema Lê Đại Hành"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Can%20Tho%20Cai%20Rang&query_place_id=0x31a0628109025bd1:0"
+  #   custom_params:
+  #     placeId: "0x31a0628109025bd1:0"
+  #     company: "Lotte Cinema Can Tho Cai Rang"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Hu%E1%BA%BF&query_place_id=0x3141a11514dac771:0"
+  #   custom_params:
+  #     placeId: "0x3141a11514dac771:0"
+  #     company: "Lotte Cinema Huế"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20B%E1%BA%AFc%20Giang&query_place_id=0x31356d9c4a64e8b7:0"
+  #   custom_params:
+  #     placeId: "0x31356d9c4a64e8b7:0"
+  #     company: "LOTTE Cinema Bắc Giang"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Th%C4%83ng%20Long&query_place_id=0x3135aca8a5a928c5:0"
+  #   custom_params:
+  #     placeId: "0x3135aca8a5a928c5:0"
+  #     company: "Lotte Cinema Thăng Long"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20KosMo&query_place_id=0x3135ab0baa7eeaf5:0"
+  #   custom_params:
+  #     placeId: "0x3135ab0baa7eeaf5:0"
+  #     company: "Lotte Cinema KosMo"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Nam%20%C4%90%E1%BB%8Bnh&query_place_id=0x3135e756f1768db9:0"
+  #   custom_params:
+  #     placeId: "0x3135e756f1768db9:0"
+  #     company: "LOTTE Cinema Nam Định"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Phan%20Rang%20-%20Vincom&query_place_id=0x3170cf644805a273:0"
+  #   custom_params:
+  #     placeId: "0x3170cf644805a273:0"
+  #     company: "LOTTE Cinema Phan Rang - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Nha%20Trang%20Th%C3%A1i%20Nguy%C3%AAn%20-%20Vincom&query_place_id=0x31705d7fc0183ff7:0"
+  #   custom_params:
+  #     placeId: "0x31705d7fc0183ff7:0"
+  #     company: "LOTTE Cinema Nha Trang Thái Nguyên - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Ph%E1%BB%A7%20L%C3%BD%20-%20Vincom&query_place_id=0x3135cfaa82b86add:0"
+  #   custom_params:
+  #     placeId: "0x3135cfaa82b86add:0"
+  #     company: "LOTTE Cinema Phủ Lý - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20G%C3%B2%20V%E1%BA%A5p&query_place_id=0x317529abdd70ce51:0"
+  #   custom_params:
+  #     placeId: "0x317529abdd70ce51:0"
+  #     company: "Lotte Cinema Gò Vấp"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20C%C3%A0%20Mau%20-%20Vincom&query_place_id=0x31a1496273e79015:0"
+  #   custom_params:
+  #     placeId: "0x31a1496273e79015:0"
+  #     company: "LOTTE Cinema Cà Mau - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Tuyen%20Quang&query_place_id=0x3134ade4f0da6ffd:0"
+  #   custom_params:
+  #     placeId: "0x3134ade4f0da6ffd:0"
+  #     company: "Lotte Cinema Tuyen Quang"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20D%C4%A9%20An%20-%20Vincom&query_place_id=0x3174d90036d2101b:0"
+  #   custom_params:
+  #     placeId: "0x3174d90036d2101b:0"
+  #     company: "LOTTE Cinema Dĩ An - Vincom"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vincom%20Long%20Xuy%C3%AAn&query_place_id=0x310a72e5cb731909:0"
+  #   custom_params:
+  #     placeId: "0x310a72e5cb731909:0"
+  #     company: "Lotte Cinema Vincom Long Xuyên"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Th%C3%A1i%20B%C3%ACnh&query_place_id=0x3135e4d0dd5abaf9:0"
+  #   custom_params:
+  #     placeId: "0x3135e4d0dd5abaf9:0"
+  #     company: "Lotte Cinema Thái Bình"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BA%A3i%20Ph%C3%B2ng%20-%20Vincom&query_place_id=0x314a7bcb18100ad5:0"
+  #   custom_params:
+  #     placeId: "0x314a7bcb18100ad5:0"
+  #     company: "LOTTE Cinema Hải Phòng - Vincom"
+  #     source: "official-api"
   - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20C%E1%BA%A7n%20Th%C6%A1%20Ninh%20Ki%E1%BB%81u&query_place_id=0x31a08811b0e21db5:0"
     custom_params:
       placeId: "0x31a08811b0e21db5:0"
       company: "LOTTE Cinema Cần Thơ Ninh Kiều"
       source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BA%A1%20Long&query_place_id=0x314a578fc9551691:0"
-    custom_params:
-      placeId: "0x314a578fc9551691:0"
-      company: "LOTTE Cinema Hạ Long"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c&query_place_id=0x3175278015247b3d:0"
-    custom_params:
-      placeId: "0x3175278015247b3d:0"
-      company: "Lotte Cinema Thủ Đức"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vinh&query_place_id=0x3139ce151598840b:0"
-    custom_params:
-      placeId: "0x3139ce151598840b:0"
-      company: "Lotte Cinema Vinh"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BA%A3i%20D%C6%B0%C6%A1ng&query_place_id=0x31359b1176576e4d:0"
-    custom_params:
-      placeId: "0x31359b1176576e4d:0"
-      company: "LOTTE Cinema Hải Dương"
-      source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Nha%20Trang%20Tr%E1%BA%A7n%20Ph%C3%BA%20-%20Vincom&query_place_id=0x317067cd0c923679:0"
-    custom_params:
-      placeId: "0x317067cd0c923679:0"
-      company: "LOTTE Cinema Nha Trang Trần Phú - Vincom"
-      source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BA%A1%20Long&query_place_id=0x314a578fc9551691:0"
+  #   custom_params:
+  #     placeId: "0x314a578fc9551691:0"
+  #     company: "LOTTE Cinema Hạ Long"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c&query_place_id=0x3175278015247b3d:0"
+  #   custom_params:
+  #     placeId: "0x3175278015247b3d:0"
+  #     company: "Lotte Cinema Thủ Đức"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20Vinh&query_place_id=0x3139ce151598840b:0"
+  #   custom_params:
+  #     placeId: "0x3139ce151598840b:0"
+  #     company: "Lotte Cinema Vinh"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20H%E1%BA%A3i%20D%C6%B0%C6%A1ng&query_place_id=0x31359b1176576e4d:0"
+  #   custom_params:
+  #     placeId: "0x31359b1176576e4d:0"
+  #     company: "LOTTE Cinema Hải Dương"
+  #     source: "official-api"
+  # - url: "https://www.google.com/maps/search/?api=1&query=LOTTE%20Cinema%20Nha%20Trang%20Tr%E1%BA%A7n%20Ph%C3%BA%20-%20Vincom&query_place_id=0x317067cd0c923679:0"
+  #   custom_params:
+  #     placeId: "0x317067cd0c923679:0"
+  #     company: "LOTTE Cinema Nha Trang Trần Phú - Vincom"
+  #     source: "official-api"

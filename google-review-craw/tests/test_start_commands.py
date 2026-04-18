@@ -220,20 +220,20 @@ class TestConvexSyncHelpers:
         assert metrics["starDistribution"]["star5"] == 1
         assert metrics["starDistribution"]["star3"] == 1
 
-    @patch("start.shutil.which")
     @patch("start.subprocess.run")
-    def test_sync_place_to_convex_runs_required_mutations(self, mock_run, mock_which, tmp_path):
+    def test_sync_place_to_convex_runs_required_mutations(self, mock_run, tmp_path):
         from start import _sync_place_to_convex
 
-        mock_which.return_value = "C:\\Program Files\\nodejs\\npx.cmd"
         mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = ""
+        mock_run.return_value.stderr = ""
         project_root = tmp_path / "lotte_gg_map"
         crawler_root = project_root / "google-review-craw"
         web_root = project_root / "online-reputation-management-system"
         scripts_dir = web_root / "scripts"
         scripts_dir.mkdir(parents=True)
         (web_root / ".env.local").write_text("NEXT_PUBLIC_CONVEX_URL=test\n", encoding="utf-8")
-        (scripts_dir / "convex-run.js").write_text("// test", encoding="utf-8")
+        (scripts_dir / "convex-sync-place.cjs").write_text("// test", encoding="utf-8")
         fake_start = crawler_root / "start.py"
         fake_start.parent.mkdir(parents=True)
         fake_start.write_text("", encoding="utf-8")
@@ -258,4 +258,8 @@ class TestConvexSyncHelpers:
         with patch("start.Path.resolve", return_value=fake_start):
             _sync_place_to_convex({}, place_snapshot, reviews)
 
-        assert mock_run.call_count == 3
+        assert mock_run.call_count == 1
+        command = mock_run.call_args.args[0]
+        assert command[0] == "C:\\Program Files\\nodejs\\node.exe"
+        assert command[1].endswith("convex-sync-place.cjs")
+        assert command[2].endswith("tmp-convex-sync-place.json")
