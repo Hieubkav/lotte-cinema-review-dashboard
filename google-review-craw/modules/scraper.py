@@ -1355,6 +1355,7 @@ class GoogleReviewsScraper:
             place_id = self.review_db.upsert_place(
                 place_id, place_name, url, resolved_url, lat_f, lng_f
             )
+            self.last_place_id = place_id
             session_id = self.review_db.start_session(place_id, sort_by)
             log.info(f"Registered place: {place_id} ({place_name})")
             self._report_progress("analyzing", f"Located Node: {place_name or place_id}")

@@ -1,0 +1,44 @@
+backup_to_json: true
+businesses: []
+convert_dates: true
+custom_params:
+  company: Thaitours
+  source: Google Maps
+custom_url_base: https://mycustomurl.com
+custom_url_profiles: /profiles/
+custom_url_reviews: /reviews/
+db_path: reviews.db
+download_images: true
+download_threads: 4
+headless: true
+image_dir: review_images
+json_path: google_reviews.json
+log_dir: logs
+log_file: scraper.log
+log_level: INFO
+max_reviews: 0
+max_scroll_attempts: 50
+mongodb:
+  collection: google_reviews
+  database: reviews
+  sync_mode: update
+  uri: mongodb://localhost:27017
+overwrite_existing: false
+preserve_original_urls: true
+replace_urls: false
+s3:
+  acl: public-read
+  endpoint_url: null
+  path_style: false
+  provider: aws
+  sync_mode: update
+scrape_mode: update
+scroll_idle_limit: 15
+seen_ids_path: google_reviews.ids
+sort_by: relevance
+stop_on_match: false
+stop_threshold: 3
+store_local_paths: true
+url: ''
+urls: []
+use_mongodb: true

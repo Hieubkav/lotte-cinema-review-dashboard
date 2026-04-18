@@ -1,4 +1,4 @@
-import { queryGeneric, mutationGeneric } from "convex/server";
+import { queryGeneric, mutationGeneric, actionGeneric, makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 
 export const list = queryGeneric({
@@ -64,5 +64,59 @@ export const upsert = mutationGeneric({
     }
 
     return await ctx.db.insert("places", payload as any);
+  },
+});
+
+export const seedFromLegacyOfficialApi = actionGeneric({
+  args: {
+    sourceUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const url = args.sourceUrl || 'https://online-reputation-management-system.vercel.app/api/places/official';
+    const response = await fetch(url, { method: 'GET' });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch legacy places: ${response.status} ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as {
+      data?: Array<{
+        placeId: string;
+        name: string;
+        avgRating?: number;
+        totalReviews?: number;
+        capturedReviews?: number;
+        lastScraped?: string;
+      }>;
+    };
+
+    const rows = data.data || [];
+    const upsertRef = makeFunctionReference<'mutation'>('places:upsert');
+
+    let imported = 0;
+    for (const row of rows) {
+      if (!row.placeId || !row.name) continue;
+
+      await ctx.runMutation(upsertRef, {
+        placeId: row.placeId,
+        name: row.name,
+        originalUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.name)}&query_place_id=${row.placeId}`,
+        resolvedUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.name)}&query_place_id=${row.placeId}`,
+        officialTotalReviews: row.totalReviews ?? 0,
+        officialAvgRating: row.avgRating ?? 0,
+        capturedTotalReviews: row.capturedReviews ?? 0,
+        lastScrapedAt: row.lastScraped,
+        lastSyncStatus: 'seeded_from_legacy_api',
+        lastSyncError: undefined,
+      } as any);
+
+      imported += 1;
+    }
+
+    return {
+      sourceUrl: url,
+      totalFetched: rows.length,
+      imported,
+    };
   },
 });

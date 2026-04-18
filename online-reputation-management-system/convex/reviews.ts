@@ -126,3 +126,47 @@ export const cleanupByPlace = mutationGeneric({
     };
   },
 });
+
+export const cleanupMockReviews = mutationGeneric({
+  args: {
+    placeId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const reviews = args.placeId
+      ? await ctx.db
+          .query("reviews")
+          .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId!))
+          .collect()
+      : await ctx.db.query("reviews").collect();
+
+    let deletedReviews = 0;
+    const placeIds = new Set<string>();
+
+    for (const review of reviews) {
+      if (!review.text?.includes("Auto-captured review")) continue;
+      await ctx.db.delete(review._id);
+      deletedReviews += 1;
+      placeIds.add(review.placeId);
+    }
+
+    const metrics = args.placeId
+      ? await ctx.db
+          .query("branchDailyMetrics")
+          .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId!))
+          .collect()
+      : await ctx.db.query("branchDailyMetrics").collect();
+
+    let deletedMetrics = 0;
+    for (const metric of metrics) {
+      if (!placeIds.has(metric.placeId) && (!args.placeId || metric.placeId !== args.placeId)) continue;
+      await ctx.db.delete(metric._id);
+      deletedMetrics += 1;
+    }
+
+    return {
+      deletedReviews,
+      deletedMetrics,
+      affectedPlaceIds: Array.from(placeIds),
+    };
+  },
+});
