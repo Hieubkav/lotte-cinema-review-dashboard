@@ -10,6 +10,9 @@ import {
 import ReviewCard from '../components/ReviewCard';
 import { TAG_KEYS, TAG_LABELS, type TagKey } from '../utils';
 
+const STAR_BUCKETS = ['0-1', '1-2', '2-3', '3-4', '4-5'] as const;
+type StarBucket = (typeof STAR_BUCKETS)[number];
+
 type Review = {
   _id?: string;
   reviewId?: string;
@@ -34,6 +37,7 @@ type PlaceDetailViewProps = {
   totalPages: number;
   searchQuery: string;
   selectedTags: TagKey[];
+  selectedStars: StarBucket[];
   sort: 'date_desc' | 'date_asc';
 };
 
@@ -53,6 +57,7 @@ export default function PlaceDetailView({
   totalPages,
   searchQuery,
   selectedTags,
+  selectedStars,
   sort,
 }: PlaceDetailViewProps) {
   const router = useRouter();
@@ -215,6 +220,40 @@ export default function PlaceDetailView({
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex bg-[var(--surface-3)] p-0.5 rounded-[980px] flex-wrap gap-0.5">
+                    {STAR_BUCKETS.map((bucket) => (
+                      <button
+                        key={bucket}
+                        onClick={() =>
+                          updateFilters((params) => {
+                            const nextStars = selectedStars.includes(bucket)
+                              ? selectedStars.filter((item) => item !== bucket)
+                              : [...selectedStars, bucket];
+                            if (nextStars.length > 0) params.set('stars', nextStars.join(','));
+                            else params.delete('stars');
+                          })
+                        }
+                        className={`px-3 py-1 rounded-[980px] text-[12px] font-semibold transition-all ${selectedStars.includes(bucket) ? 'bg-amber-500 text-white shadow-sm' : 'text-tertiary hover:text-secondary'}`}
+                        style={{ letterSpacing: '-0.12px' }}
+                      >
+                        {bucket} sao
+                      </button>
+                    ))}
+                    {selectedStars.length > 0 && (
+                      <button
+                        onClick={() =>
+                          updateFilters((params) => {
+                            params.delete('stars');
+                          })
+                        }
+                        className="p-1 px-2 text-tertiary hover:text-[#ff453a] transition-colors"
+                        title="Bỏ lọc sao"
+                      >
+                        <FilterX className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
                   <div className="flex bg-[var(--surface-3)] p-0.5 rounded-[980px] flex-wrap gap-0.5">
                     {TAG_KEYS.map((tag) => (
                       <button

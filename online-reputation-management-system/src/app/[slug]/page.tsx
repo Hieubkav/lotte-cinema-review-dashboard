@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 24;
 const SORT_OPTIONS = new Set(['date_desc', 'date_asc']);
+const STAR_BUCKETS = ['0-1', '1-2', '2-3', '3-4', '4-5'] as const;
+type StarBucket = (typeof STAR_BUCKETS)[number];
 
 function normalizeSearchQuery(value?: string) {
   const query = value?.trim() ?? '';
@@ -20,6 +22,14 @@ function normalizeTags(value?: string): TagKey[] {
     .split(',')
     .map((tag) => tag.trim())
     .filter((tag): tag is TagKey => TAG_KEYS.includes(tag as TagKey));
+}
+
+function normalizeStars(value?: string): StarBucket[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((bucket) => bucket.trim())
+    .filter((bucket): bucket is StarBucket => STAR_BUCKETS.includes(bucket as StarBucket));
 }
 
 function normalizeSort(value?: string): 'date_desc' | 'date_asc' {
@@ -49,7 +59,7 @@ export default async function PlacePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; q?: string; tags?: string; sort?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; tags?: string; stars?: string; sort?: string }>;
 }) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
@@ -60,6 +70,7 @@ export default async function PlacePage({
   const page = Math.max(1, Number(resolvedSearchParams.page || '1') || 1);
   const q = normalizeSearchQuery(resolvedSearchParams.q);
   const tags = normalizeTags(resolvedSearchParams.tags);
+  const stars = normalizeStars(resolvedSearchParams.stars);
   const sort = normalizeSort(resolvedSearchParams.sort);
 
   try {
@@ -71,6 +82,7 @@ export default async function PlacePage({
         limit: PAGE_SIZE,
         q,
         tags,
+        stars,
         sort,
       }),
     ]);
@@ -92,6 +104,7 @@ export default async function PlacePage({
         totalPages={reviewResult.totalPages || 0}
         searchQuery={q ?? ''}
         selectedTags={tags}
+        selectedStars={stars}
         sort={sort}
       />
     );

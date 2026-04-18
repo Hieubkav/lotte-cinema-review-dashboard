@@ -10,6 +10,8 @@ const TAG_MAP = {
 } as const;
 
 type TagKey = keyof typeof TAG_MAP;
+const STAR_BUCKETS = ['0-1', '1-2', '2-3', '3-4', '4-5'] as const;
+type StarBucket = (typeof STAR_BUCKETS)[number];
 
 function getTags(text: string = ""): TagKey[] {
   if (!text) return [];
@@ -25,6 +27,22 @@ function getTags(text: string = ""): TagKey[] {
   return tags;
 }
 
+function matchesStarBuckets(rating: number, selectedStars: StarBucket[]) {
+  if (selectedStars.length === 0) return true;
+
+  return selectedStars.some((bucket) => {
+    const [minRaw, maxRaw] = bucket.split('-');
+    const min = Number(minRaw);
+    const max = Number(maxRaw);
+
+    if (bucket === '4-5') {
+      return rating >= min && rating <= max;
+    }
+
+    return rating >= min && rating < max;
+  });
+}
+
 export const paginatedByPlace = queryGeneric({
   args: {
     placeId: v.optional(v.string()),
@@ -32,6 +50,7 @@ export const paginatedByPlace = queryGeneric({
     limit: v.optional(v.number()),
     q: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    stars: v.optional(v.array(v.string())),
     sort: v.optional(v.union(v.literal("date_desc"), v.literal("date_asc"))),
   },
   handler: async (ctx, args) => {
@@ -39,6 +58,7 @@ export const paginatedByPlace = queryGeneric({
     const limit = Math.min(200, Math.max(1, args.limit ?? 50));
     const searchQuery = args.q?.trim().toLowerCase() ?? "";
     const selectedTags = (args.tags ?? []).filter((tag): tag is TagKey => tag in TAG_MAP);
+    const selectedStars = (args.stars ?? []).filter((bucket): bucket is StarBucket => STAR_BUCKETS.includes(bucket as StarBucket));
     const sort = args.sort ?? "date_desc";
 
     let rows = args.placeId
@@ -54,7 +74,8 @@ export const paginatedByPlace = queryGeneric({
       const reviewTags = getTags(review.text ?? "");
       const matchesQuery = !searchQuery || text.includes(searchQuery) || author.includes(searchQuery);
       const matchesTags = selectedTags.length === 0 || selectedTags.some((tag) => reviewTags.includes(tag));
-      return matchesQuery && matchesTags;
+      const matchesStars = matchesStarBuckets(Number(review.rating ?? 0), selectedStars);
+      return matchesQuery && matchesTags && matchesStars;
     });
 
     rows = rows.sort((a: any, b: any) => {
