@@ -13,7 +13,7 @@ const result = spawnSync(
   {
     cwd: process.cwd(),
     stdio: "inherit",
-    shell: true,
+    shell: false,
   }
 );
 
