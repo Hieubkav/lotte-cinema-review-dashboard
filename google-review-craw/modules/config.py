@@ -69,6 +69,8 @@ DEFAULT_CONFIG = {
     "convex": {
         "batch_size": 100,
         "node_path": "C:\\Program Files\\nodejs\\node.exe",
+        "web_root": None,
+        "runner": None,
     },
 }
 

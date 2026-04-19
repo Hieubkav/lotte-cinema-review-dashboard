@@ -15,24 +15,75 @@ log = logging.getLogger("scraper")
 class ConvexReviewStore(ReviewStore):
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.project_root = Path(__file__).resolve().parents[2]
-        self.web_root = self.project_root.parent / "online-reputation-management-system"
-        self.node_path = config.get("convex", {}).get("node_path") or "C:\\Program Files\\nodejs\\node.exe"
-        self.runner_path = self.web_root / "scripts" / "convex-run.js"
+        self.project_root = Path(__file__).resolve().parents[1]
+        convex_config = config.get("convex", {})
+        self.node_path = convex_config.get("node_path") or "C:\\Program Files\\nodejs\\node.exe"
+        self.runner = convex_config.get("runner")
+        self.web_root = self._resolve_web_root()
+        self.runner_path = self.web_root / "scripts" / "convex-query.cjs"
         self.env_path = self.web_root / ".env.local"
         self.place_cache: Dict[str, Dict[str, Any]] = {}
         self._validate_runtime()
 
+    def _resolve_web_root(self) -> Path:
+        convex_config = self.config.get("convex", {})
+        configured_root = convex_config.get("web_root")
+        candidates: List[Path] = []
+
+        if configured_root:
+            configured_path = Path(configured_root)
+            if not configured_path.is_absolute():
+                configured_path = (self.project_root / configured_path).resolve()
+            candidates.append(configured_path)
+
+        candidates.extend([
+            (self.project_root.parent / "online-reputation-management-system").resolve(),
+            (self.project_root / "online-reputation-management-system").resolve(),
+        ])
+
+        seen: Set[str] = set()
+        unique_candidates: List[Path] = []
+        for candidate in candidates:
+            key = str(candidate)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_candidates.append(candidate)
+
+        self._web_root_candidates = unique_candidates
+        for candidate in unique_candidates:
+            if (candidate / "scripts" / "convex-query.cjs").exists() and (candidate / ".env.local").exists():
+                return candidate
+
+        return unique_candidates[0]
+
     def _validate_runtime(self) -> None:
-        if not self.web_root.exists():
-            raise RuntimeError(f"Không tìm thấy web app Convex: {self.web_root}")
-        if not self.env_path.exists():
-            raise RuntimeError(f"Thiếu file Convex env: {self.env_path}")
-        if not self.runner_path.exists():
-            raise RuntimeError(f"Thiếu Convex runner: {self.runner_path}")
+        if self.web_root.exists() and self.env_path.exists() and self.runner_path.exists():
+            return
+
+        diagnostics = []
+        for candidate in getattr(self, "_web_root_candidates", [self.web_root]):
+            diagnostics.append(
+                f"- {candidate} | exists={candidate.exists()} "
+                f"| env={(candidate / '.env.local').exists()} "
+                f"| runner={(candidate / 'scripts' / 'convex-query.cjs').exists()}"
+            )
+        raise RuntimeError(
+            "Không tìm thấy web app Convex hợp lệ.\n"
+            f"Configured/current path: {self.web_root}\n"
+            "Các path đã thử:\n"
+            + "\n".join(diagnostics)
+            + "\nHãy set convex.web_root trong config.yaml, ví dụ: ../online-reputation-management-system"
+        )
 
     def _run_convex(self, function_name: str, payload: Dict[str, Any]) -> Any:
-        command = [self.node_path, str(self.runner_path), function_name, json.dumps(payload, ensure_ascii=False)]
+        command = [
+            self.node_path,
+            str(self.runner_path),
+            function_name,
+            self.env_path.name,
+            json.dumps(payload, ensure_ascii=False),
+        ]
         result = subprocess.run(
             command,
             cwd=str(self.web_root),

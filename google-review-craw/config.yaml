@@ -22,6 +22,12 @@ sort_by: "newest"               # Options: newest, highest, lowest, relevance
 #   "update"    — insert new + update changed reviews (default)
 #   "full"      — re-process all reviews through upsert pipeline
 scrape_mode: "update"
+storage_backend: "convex"
+convex:
+  batch_size: 100
+  node_path: "C:\\Program Files\\nodejs\\node.exe"
+  web_root: "../online-reputation-management-system"
+  runner: "bunx"
 
 # Early stop — stop after N consecutive fully-matched scroll batches.
 # A "batch" = all reviews discovered in one scroll iteration.
