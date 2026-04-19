@@ -12,6 +12,7 @@ import threading
 import time
 import traceback
 from typing import Dict, Any, List
+from urllib.parse import quote, unquote
 
 from seleniumbase import Driver
 from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
@@ -163,6 +164,7 @@ REVIEW_WORDS = {
 
 MIN_NEW_CARDS_FOR_FAST_SLEEP = 5
 BATCH_UPSERT_SIZE = 20
+SPECIAL_PLACEID_NHA_CAFE = "0x31a0890038ccfc4f:0x567ba2463308ff1d"
 
 
 class GoogleReviewsScraper:
@@ -428,15 +430,86 @@ class GoogleReviewsScraper:
             return match.group(1), match.group(2)
         return None, None
 
+    @staticmethod
+    def _normalize_place_id(value: str | None) -> str:
+        return (value or "").strip().lower()
+
+    def _get_resolved_place_id(self, original_url: str, resolved_url: str) -> str:
+        pid = extract_place_id(original_url, resolved_url)
+        if pid.startswith("cid:") or pid.startswith("short:") or pid.startswith("hash:"):
+            return ""
+        return self._normalize_place_id(pid)
+
+    def _try_click_first_place_from_list(self, driver: Chrome, wait: WebDriverWait) -> bool:
+        """For list/search pages, click first place card to resolve into place detail URL."""
+        try:
+            first_place = wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="/maps/place/"]'))
+            )
+        except TimeoutException:
+            log.warning("No place card found in list/search view")
+            return False
+
+        try:
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", first_place)
+            time.sleep(0.5)
+            try:
+                first_place.click()
+            except Exception:
+                driver.execute_script("arguments[0].click();", first_place)
+            time.sleep(2.5)
+            self.dismiss_cookies(driver)
+            return True
+        except Exception as e:
+            log.warning(f"Failed clicking first place card from list: {e}")
+            return False
+
+    def _navigate_and_validate_place_id(
+        self,
+        driver: Chrome,
+        wait: WebDriverWait,
+        candidate_url: str,
+        original_url: str,
+        expected_place_id: str,
+        wait_seconds: float = 3.0,
+    ) -> bool:
+        log.info(f"Trying navigation candidate: {candidate_url}")
+        driver.get(candidate_url)
+        try:
+            wait.until(lambda d: "google.com/maps" in d.current_url)
+        except TimeoutException:
+            log.warning("Timed out waiting for Google Maps to load")
+
+        time.sleep(wait_seconds)
+        self.dismiss_cookies(driver)
+
+        resolved = driver.current_url or ""
+        actual_place_id = self._get_resolved_place_id(original_url, resolved)
+        if actual_place_id and actual_place_id == expected_place_id:
+            return True
+
+        # Strict special-case for Nhà cafe: if in list/search, click first place then re-check place_id
+        if expected_place_id == SPECIAL_PLACEID_NHA_CAFE and "/maps/search/" in resolved:
+            log.info("Nhà cafe list/search detected, trying first place card click for strict placeId validation")
+            if self._try_click_first_place_from_list(driver, wait):
+                resolved = driver.current_url or ""
+                actual_place_id = self._get_resolved_place_id(original_url, resolved)
+                if actual_place_id and actual_place_id == expected_place_id:
+                    log.info("Resolved expected placeId after selecting first place card")
+                    return True
+
+        log.warning(
+            "Place mismatch after candidate. expected=%s, actual=%s, resolved_url=%s",
+            expected_place_id,
+            actual_place_id or "<unknown>",
+            resolved,
+        )
+        return False
+
     def navigate_to_place(self, driver: Chrome, url: str, wait: WebDriverWait) -> bool:
         """
         Navigate to a Google Maps place, bypassing the 'limited view' restriction
         that Google shows to non-logged-in users.
-
-        Strategy:
-        1. Warm up by visiting google.com to establish cookies/session state
-        2. Use Google Maps search-based navigation (avoids limited view)
-        3. Fall back to direct URL if search doesn't work
         """
         log.info("Navigating to place with limited-view bypass...")
 
@@ -449,15 +522,50 @@ class GoogleReviewsScraper:
         except Exception as e:
             log.debug(f"Warm-up navigation failed: {e}")
 
-        # Step 2: Resolve the target URL and extract place name
+        custom_params = self.config.get("custom_params") or {}
+        expected_place_id = self._normalize_place_id(custom_params.get("placeId"))
+
+        if expected_place_id == SPECIAL_PLACEID_NHA_CAFE:
+            place_name = self._extract_place_name(driver, url)
+            encoded_place_name = quote(unquote(place_name or "").strip())
+
+            fallback_urls = [url]
+            fallback_urls.append(
+                f"https://www.google.com/maps/search/?api=1&query_place_id={expected_place_id}"
+            )
+            fallback_urls.append(
+                f"https://www.google.com/maps/place/?q=place_id:{expected_place_id}"
+            )
+            if encoded_place_name:
+                fallback_urls.append(
+                    f"https://www.google.com/maps/search/?api=1&query={encoded_place_name}&query_place_id={expected_place_id}"
+                )
+
+            seen = set()
+            for candidate_url in fallback_urls:
+                if not candidate_url or candidate_url in seen:
+                    continue
+                seen.add(candidate_url)
+                if self._navigate_and_validate_place_id(
+                    driver,
+                    wait,
+                    candidate_url,
+                    url,
+                    expected_place_id,
+                ):
+                    log.info("Navigation resolved to expected place_id: %s", expected_place_id)
+                    return True
+
+            raise RuntimeError(
+                f"Could not resolve expected placeId '{expected_place_id}' from configured URL and fallbacks"
+            )
+
         place_name = self._extract_place_name(driver, url)
         current_url = driver.current_url
 
-        # Step 3: Try search-based navigation (primary bypass method)
         if place_name:
-            # Extract coordinates for more precise search
             lat, lng = self._extract_place_coords(current_url)
-            search_query = place_name
+            search_query = quote(unquote(place_name).strip())
             if lat and lng:
                 search_url = f"https://www.google.com/maps/search/{search_query}/@{lat},{lng},17z"
             else:
@@ -467,11 +575,9 @@ class GoogleReviewsScraper:
             driver.get(search_url)
             time.sleep(5)
 
-            # Check if we landed on a place page with full content (tabs visible)
             tabs = driver.find_elements(By.CSS_SELECTOR, '[role="tab"]')
             has_reviews = any(
                 any(w in (t.text or "").lower() for w in REVIEW_WORDS)
-                or t.get_attribute("data-tab-index") == "1"
                 for t in tabs
             )
 
@@ -480,7 +586,6 @@ class GoogleReviewsScraper:
                 self.dismiss_cookies(driver)
                 return True
 
-            # Check for review cards directly (some layouts skip tabs)
             cards = driver.find_elements(By.CSS_SELECTOR, 'div[data-review-id]')
             if cards:
                 log.info(f"Search-based navigation found {len(cards)} review cards")
@@ -489,7 +594,6 @@ class GoogleReviewsScraper:
 
             log.info("Search-based navigation did not show reviews, trying direct URL...")
 
-        # Step 4: Fallback to direct URL
         log.info(f"Navigating directly to: {url}")
         driver.get(url)
         try:
@@ -499,7 +603,6 @@ class GoogleReviewsScraper:
         time.sleep(3)
         self.dismiss_cookies(driver)
 
-        # Check if limited view is active
         try:
             body_text = driver.find_element(By.TAG_NAME, "body").text
             if "limited view" in body_text.lower():
@@ -1401,6 +1504,14 @@ class GoogleReviewsScraper:
             except Exception as sort_error:
                 log.warning(f"Sort failed but continuing: {sort_error}")
 
+            # For Nhà cafe strict case: keep existing scrolling behavior but hard-cap at 100 reviews
+            special_target_reviews = 0
+            if place_id == SPECIAL_PLACEID_NHA_CAFE:
+                stop_threshold = 0
+                scroll_idle_limit = max(scroll_idle_limit, 40)
+                special_target_reviews = 100
+                log.info("Nhà cafe detected: disabling early-stop and setting hard cap to 100 reviews")
+
             # We always try to use early-stop if sorting is set to newest,
             # even if the automated confirmation was ambiguous.
             if stop_threshold > 0 and sort_by != "newest":
@@ -1450,7 +1561,6 @@ class GoogleReviewsScraper:
             consecutive_matched_batches = 0
             consecutive_seen_items = 0  # Counter for per-review early stopping
 
-            # Prefetch selector to avoid repeated lookups
             try:
                 driver.execute_script("window.scrollablePane = arguments[0];", pane)
                 scroll_script = "window.scrollablePane.scrollBy(0, window.scrollablePane.scrollHeight);"
@@ -1472,6 +1582,9 @@ class GoogleReviewsScraper:
 
                 try:
                     cards = pane.find_elements(By.CSS_SELECTOR, CARD_SEL)
+                    if not cards:
+                        cards = driver.find_elements(By.CSS_SELECTOR, 'div[data-review-id]')
+
                     fresh_cards: List[WebElement] = []
 
                     # Check for valid cards
@@ -1607,6 +1720,10 @@ class GoogleReviewsScraper:
                         log.info("Reached max_reviews limit (%d), stopping.", max_reviews)
                         idle = 999
 
+                    if special_target_reviews > 0 and len(seen) >= special_target_reviews:
+                        log.info("Reached hard cap for Nhà cafe (%d), stopping.", special_target_reviews)
+                        idle = 999
+
                     # Batch-level stop: entire scroll iteration was unchanged.
                     # Require min 3 reviews in the batch to avoid false stops
                     # from tiny tail batches during lazy loading.
@@ -1631,12 +1748,10 @@ class GoogleReviewsScraper:
                         attempts += 1
                         log.info(f"No new reviews in this iteration (idle: {idle}/{max_idle}, attempts: {attempts}/{max_attempts}, total seen: {len(seen)})")
 
-                        # When no new reviews, scroll more aggressively
                         try:
-                            # Try multiple scroll methods
                             driver.execute_script(scroll_script)
                             self._adaptive_sleep(0.2, 0.05)
-                            driver.execute_script("window.scrollBy(0, 500);")  # Extra scroll
+                            driver.execute_script("window.scrollBy(0, 500);")
                             self._adaptive_sleep(0.2, 0.05)
                         except Exception as e:
                             log.warning(f"Error scrolling: {e}")
@@ -1652,7 +1767,6 @@ class GoogleReviewsScraper:
 
                             if scroll_stuck_count > 5:
                                 log.warning("Scroll is stuck - trying alternative scroll method")
-                                # Try clicking the last visible review to force loading
                                 try:
                                     driver.execute_script("arguments[0].lastElementChild.scrollIntoView();", pane)
                                     self._adaptive_sleep(0.8, 0.2)

@@ -66,8 +66,9 @@ def _extract_cid(url: str) -> str:
 
 
 def _extract_hex_id(url: str) -> str:
-    """Extract hex place ID from /data= param in URL (e.g., !1s0x80dc...)."""
-    match = re.search(r"!1s(0x[0-9a-fA-F]+:[0-9a-fA-F]+)", url)
+    """Extract hex place ID from /data= param in URL (e.g., !1s0x80dc...:0x...)."""
+    # Accept both second-part formats: :0 and :0x...
+    match = re.search(r"!1s(0x[0-9a-fA-F]+:(?:0x)?[0-9a-fA-F]+)", url)
     if match:
         return match.group(1)
     # Also try the shorter form without colon
