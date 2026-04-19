@@ -3,7 +3,7 @@ import {
   Star, TrendingUp, BarChart3,
   Tags, FilterX, CalendarDays, Search, Activity, RefreshCcw, Loader2
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/components/Providers';
 import { DashboardState } from '../hooks/useDashboardData';
 import ReviewCard from '../components/ReviewCard';
 import { TAG_MAP, TAG_KEYS, getTags, type TagKey } from '../utils';

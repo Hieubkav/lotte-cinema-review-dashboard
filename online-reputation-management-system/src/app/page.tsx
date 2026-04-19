@@ -17,7 +17,7 @@ export default async function Dashboard() {
     cinemas = places.map((p: any) => ({
       ...p,
       placeId: p.placeId,
-      slug: buildPlaceSlug(p.name, p.placeId),
+      slug: buildPlaceSlug(p.name),
       place_name: p.name,
       name: p.name,
       total_reviews: p.officialTotalReviews ?? 0,

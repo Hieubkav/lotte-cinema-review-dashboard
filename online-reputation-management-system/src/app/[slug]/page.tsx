@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import PlaceDetailView from '@/components/dashboard/views/PlaceDetailView';
 import { convexQuery } from '@/lib/convex';
-import { extractPlaceIdFromSlug } from '@/lib/slug';
+import { isLegacyPlaceSlug } from '@/lib/slug';
 import { TAG_KEYS, type TagKey } from '@/components/dashboard/utils';
 
 export const dynamic = 'force-dynamic';
@@ -63,9 +63,7 @@ export default async function PlacePage({
 }) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
-  const placeId = extractPlaceIdFromSlug(slug);
-
-  if (!placeId) notFound();
+  if (isLegacyPlaceSlug(slug)) notFound();
 
   const page = Math.max(1, Number(resolvedSearchParams.page || '1') || 1);
   const q = normalizeSearchQuery(resolvedSearchParams.q);
@@ -75,9 +73,9 @@ export default async function PlacePage({
 
   try {
     const [place, reviewResult] = await Promise.all([
-      convexQuery<any>('places:getByPlaceId', { placeId }),
+      convexQuery<any>('places:getBySlug', { slug }),
       convexQuery<any>('reviews:paginatedByPlace', {
-        placeId,
+        placeId: slug,
         page,
         limit: PAGE_SIZE,
         q,
@@ -88,20 +86,34 @@ export default async function PlacePage({
     ]);
 
     if (!place) notFound();
+    const resolvedPlaceId = place.placeId;
+    if (!resolvedPlaceId) notFound();
+    const normalizedReviewResult =
+      resolvedPlaceId === slug
+        ? reviewResult
+        : await convexQuery<any>('reviews:paginatedByPlace', {
+            placeId: resolvedPlaceId,
+            page,
+            limit: PAGE_SIZE,
+            q,
+            tags,
+            stars,
+            sort,
+          });
 
     const viewPlace = {
       ...place,
       currentAverageRating: place.officialAvgRating ?? 0,
-      currentTotalReviews: place.officialTotalReviews ?? reviewResult.total ?? 0,
+      currentTotalReviews: place.officialTotalReviews ?? normalizedReviewResult.total ?? 0,
     };
 
     return (
       <PlaceDetailView
         place={viewPlace}
-        reviews={(reviewResult.reviews || []).map(serializeReview)}
-        page={reviewResult.page || page}
-        total={reviewResult.total || 0}
-        totalPages={reviewResult.totalPages || 0}
+        reviews={(normalizedReviewResult.reviews || []).map(serializeReview)}
+        page={normalizedReviewResult.page || page}
+        total={normalizedReviewResult.total || 0}
+        totalPages={normalizedReviewResult.totalPages || 0}
         searchQuery={q ?? ''}
         selectedTags={tags}
         selectedStars={stars}

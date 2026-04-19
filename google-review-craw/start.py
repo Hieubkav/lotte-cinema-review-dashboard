@@ -300,6 +300,28 @@ def _extract_business_label(business, index):
     return name
 
 
+def _build_local_place_route(business, index):
+    """Build the local viewer route for a business."""
+    custom_params = business.get("custom_params") or {}
+    company = (custom_params.get("company") or "").strip()
+
+    if not company:
+        company = _extract_business_label(business, index).split(" [")[0].strip()
+
+    slug = (
+        company
+        .replace("đ", "d")
+        .replace("Đ", "D")
+    )
+    import unicodedata
+    slug = unicodedata.normalize("NFD", slug)
+    slug = "".join(ch for ch in slug if unicodedata.category(ch) != "Mn")
+    import re
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", slug).strip("-").lower()
+    slug = re.sub(r"-{2,}", "-", slug) or "place"
+    return f"http://localhost:3000/{slug}"
+
+
 def _filter_businesses_for_query(businesses, query):
     """Return businesses matching a search query."""
     normalized_query = (query or "").strip().lower()
@@ -347,7 +369,10 @@ def _prompt_sync_businesses(businesses):
         print("\nKết quả:")
         for display_index, (business_index, business) in enumerate(matches, start=1):
             label = _extract_business_label(business, business_index)
+            local_route = _build_local_place_route(business, business_index)
             print(f"  {display_index}. {label}")
+            if local_route:
+                print(f"     Xem: {local_route}")
 
         selected = input("Chọn số business muốn chạy: ").strip()
         if not selected.isdigit():

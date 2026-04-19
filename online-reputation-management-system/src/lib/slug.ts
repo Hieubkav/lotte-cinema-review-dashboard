@@ -10,21 +10,10 @@ export function slugifyPlaceName(name: string) {
     .replace(/-{2,}/g, '-');
 }
 
-export function buildPlaceSlug(name: string, placeId: string) {
-  const base = slugifyPlaceName(name) || 'place';
-  return `${base}--${encodeURIComponent(placeId)}`;
+export function buildPlaceSlug(name: string) {
+  return slugifyPlaceName(name) || 'place';
 }
 
-export function extractPlaceIdFromSlug(slug: string) {
-  const marker = '--';
-  const index = slug.lastIndexOf(marker);
-  if (index === -1) return null;
-  const encodedPlaceId = slug.slice(index + marker.length);
-  if (!encodedPlaceId) return null;
-
-  try {
-    return decodeURIComponent(encodedPlaceId);
-  } catch {
-    return null;
-  }
+export function isLegacyPlaceSlug(slug: string) {
+  return slug.includes('--');
 }

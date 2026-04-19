@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, X, Sun, Moon, RefreshCcw, Loader2, ExternalLink, Menu, Activity } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/components/Providers';
 import { DashboardState } from '../hooks/useDashboardData';
 
 export default function DashboardHeader({ state }: { state: DashboardState }) {

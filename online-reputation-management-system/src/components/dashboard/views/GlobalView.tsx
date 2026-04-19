@@ -5,7 +5,7 @@ import {
   TrendingUp, BarChart3, Star, Search, Activity
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/components/Providers';
 import { DashboardState } from '../hooks/useDashboardData';
 import { getTags } from '../utils';
 import { buildPlaceSlug } from '@/lib/slug';
@@ -136,7 +136,7 @@ export default function GlobalView({ state }: { state: DashboardState }) {
                 onClick={() => {
                   setActiveTab(c.placeId);
                   setViewMode('branch');
-                  router.push(`/${buildPlaceSlug(c.name, c.placeId)}`);
+                  router.push(`/${buildPlaceSlug(c.name)}`);
                 }}
                 className="w-full flex items-center justify-between px-3 py-3 rounded-[8px] text-left hover:bg-[var(--surface-2)] transition-all group"
               >
@@ -276,7 +276,7 @@ export default function GlobalView({ state }: { state: DashboardState }) {
                     setHighlightedReviewId(alert.reviewId);
                     const cinema = cinemasWithLatest.find((item) => item.placeId === alert.placeId);
                     if (cinema) {
-                      router.push(`/${buildPlaceSlug(cinema.name, cinema.placeId)}?reviewId=${alert.reviewId}`);
+                      router.push(`/${buildPlaceSlug(cinema.name)}?reviewId=${alert.reviewId}`);
                     }
                   }}
                   className="flex flex-col gap-4 p-5 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border-none rounded-[8px] text-left transition-all group active:scale-[0.98] shadow-sm hover:shadow-product"
