@@ -12,7 +12,7 @@ import threading
 import time
 import traceback
 from typing import Dict, Any, List
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlparse
 
 from seleniumbase import Driver
 from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
