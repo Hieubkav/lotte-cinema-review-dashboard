@@ -385,7 +385,7 @@ businesses:
       placeId: "0x317067cd0c923679:0"
       company: "LOTTE Cinema Nha Trang Trần Phú - Vincom"
       source: "official-api"
-  - url: "https://www.google.com/maps/search/?api=1&query=Nh%C3%A0%20cafe&query_place_id=0x31a0890038ccfc4f:0x567ba2463308ff1d"
+  - url: "https://www.google.com/maps/place/Nh%C3%A0+cafe/@10.0236194,105.763858,17z/data=!4m14!1m5!8m4!1e1!2s118437348734750133521!3m1!1e1!3m7!1s0x31a0890038ccfc4f:0x567ba2463308ff1d!8m2!3d10.0236194!4d105.7664329!9m1!1b1!16s%2Fg%2F11ybnctx7q?hl=vi&entry=ttu&g_ep=EgoyMDI2MDQxNS4wIKXMDSoASAFQAw%3D%3D"
     custom_params:
       placeId: "0x31a0890038ccfc4f:0x567ba2463308ff1d"
       company: "Nhà cafe"

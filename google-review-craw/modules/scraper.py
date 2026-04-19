@@ -446,6 +446,11 @@ class GoogleReviewsScraper:
             return ""
         return self._normalize_place_id(pid)
 
+    @staticmethod
+    def _is_direct_place_url(url: str) -> bool:
+        parsed = urlparse(url or "")
+        return "google.com" in parsed.netloc.lower() and "/maps/place/" in (parsed.path or "")
+
     def _try_click_first_place_from_list(self, driver: Chrome, wait: WebDriverWait) -> bool:
         """For list/search pages, click first place card to resolve into place detail URL."""
         try:
@@ -481,6 +486,10 @@ class GoogleReviewsScraper:
     ) -> bool:
         log.info(f"Trying navigation candidate: {candidate_url}")
         driver.get(candidate_url)
+        if self._is_direct_place_url(candidate_url):
+            log.info("Direct maps/place URL detected, refreshing once before validation")
+            time.sleep(2)
+            driver.refresh()
         try:
             wait.until(lambda d: "google.com/maps" in d.current_url)
         except TimeoutException:
@@ -602,6 +611,10 @@ class GoogleReviewsScraper:
 
         log.info(f"Navigating directly to: {url}")
         driver.get(url)
+        if self._is_direct_place_url(url):
+            log.info("Direct maps/place URL detected, refreshing once before continuing")
+            time.sleep(2)
+            driver.refresh()
         try:
             wait.until(lambda d: "google.com/maps" in d.current_url)
         except TimeoutException:
@@ -1574,9 +1587,14 @@ class GoogleReviewsScraper:
                 log.warning(f"Error setting up scroll script: {e}")
                 scroll_script = "window.scrollBy(0, 300);"  # Fallback to simple scrolling
 
+            adaptive_targets = [30, 20, 10] if max_reviews == 0 else []
+            adaptive_target_index = 0
+            adaptive_target = adaptive_targets[0] if adaptive_targets else max_reviews
+            adaptive_idle_stage = 0
+            adaptive_step_idle = 5
             max_attempts = max_scroll_attempts
             attempts = 0
-            max_idle = scroll_idle_limit
+            max_idle = 10 if adaptive_targets and adaptive_target == 10 else scroll_idle_limit
             consecutive_no_cards = 0  # Track how many times we find zero cards
             last_scroll_position = 0
             scroll_stuck_count = 0
@@ -1741,8 +1759,10 @@ class GoogleReviewsScraper:
                         log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews")
                         idle = 999
 
-                    if max_reviews > 0 and len(seen) >= max_reviews:
-                        log.info("Reached max_reviews limit (%d), stopping.", max_reviews)
+                    active_max_reviews = adaptive_target if adaptive_targets else max_reviews
+
+                    if active_max_reviews > 0 and len(seen) >= active_max_reviews:
+                        log.info("Reached max_reviews limit (%d), stopping.", active_max_reviews)
                         idle = 999
 
                     if special_target_reviews > 0 and len(seen) >= special_target_reviews:
@@ -1764,13 +1784,28 @@ class GoogleReviewsScraper:
                         else:
                             consecutive_matched_batches = 0
 
-                    if idle >= max_idle:
-                        log.info(f"Stopping: No new reviews found after {max_idle} scroll attempts")
-                        break
-
                     if not fresh_cards:
                         idle += 1
                         attempts += 1
+
+                        if adaptive_targets and adaptive_target_index < len(adaptive_targets) - 1:
+                            next_stage = min(idle // adaptive_step_idle, len(adaptive_targets) - 1)
+                            if next_stage > adaptive_idle_stage:
+                                adaptive_idle_stage = next_stage
+                                adaptive_target_index = next_stage
+                                adaptive_target = adaptive_targets[adaptive_target_index]
+                                max_idle = 10 if adaptive_target == 10 else scroll_idle_limit
+                                log.info(
+                                    "Adaptive max_reviews lowered to %d after idle %d/%d",
+                                    adaptive_target,
+                                    idle,
+                                    scroll_idle_limit,
+                                )
+
+                        if idle >= max_idle:
+                            log.info(f"Stopping: No new reviews found after {max_idle} scroll attempts")
+                            break
+
                         log.info(f"No new reviews in this iteration (idle: {idle}/{max_idle}, attempts: {attempts}/{max_attempts}, total seen: {len(seen)})")
 
                         try:
