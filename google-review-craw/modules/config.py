@@ -65,6 +65,11 @@ DEFAULT_CONFIG = {
     "log_file": "scraper.log",
     "db_path": "reviews.db",
     "stop_threshold": 3,
+    "storage_backend": "convex",
+    "convex": {
+        "batch_size": 100,
+        "node_path": "C:\\Program Files\\nodejs\\node.exe",
+    },
 }
 
 

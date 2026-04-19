@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
 from modules.config import load_config
 from modules.scraper import GoogleReviewsScraper
 from modules.review_db import ReviewDB
+from modules.convex_store import ConvexReviewStore
 
 
 def main():
@@ -31,33 +32,41 @@ def main():
         if not success:
             raise RuntimeError("Python scraper failed")
 
-        db = ReviewDB(config.get("db_path", "reviews.db"))
-        try:
-            current_url = getattr(getattr(scraper, "config", {}), "get", None)
-            place = None
-            candidates = [args.place_id]
-            if callable(current_url):
-                candidates.extend(
-                    [
-                        getattr(scraper, "config", {}).get("url"),
-                    ]
-                )
-            for candidate in filter(None, [args.place_id, getattr(scraper, "last_place_id", None)]):
-                place = db.get_place(candidate)
-                if place:
-                    args.place_id = candidate
-                    break
+        if config.get("storage_backend", "convex") != "sqlite":
+            store = ConvexReviewStore(config)
+            place = store.get_place(getattr(scraper, "last_place_id", "") or args.place_id)
+            rows = store.get_reviews(getattr(scraper, "last_place_id", "") or args.place_id)
             if not place:
-                stats = db.get_stats().get("places", [])
-                if not stats:
-                    raise RuntimeError("Không tìm thấy place trong SQLite sau khi crawl")
-                best = max(stats, key=lambda row: row.get("last_scraped") or "")
-                args.place_id = best.get("place_id", args.place_id)
-                place = db.get_place(args.place_id)
+                raise RuntimeError("Không tìm thấy place trong Convex sau khi crawl")
+            args.place_id = place.get("placeId", args.place_id)
+        else:
+            db = ReviewDB(config.get("db_path", "reviews.db"))
+            try:
+                current_url = getattr(getattr(scraper, "config", {}), "get", None)
+                place = None
+                candidates = [args.place_id]
+                if callable(current_url):
+                    candidates.extend(
+                        [
+                            getattr(scraper, "config", {}).get("url"),
+                        ]
+                    )
+                for candidate in filter(None, [args.place_id, getattr(scraper, "last_place_id", None)]):
+                    place = db.get_place(candidate)
+                    if place:
+                        args.place_id = candidate
+                        break
+                if not place:
+                    stats = db.get_stats().get("places", [])
+                    if not stats:
+                        raise RuntimeError("Không tìm thấy place trong SQLite sau khi crawl")
+                    best = max(stats, key=lambda row: row.get("last_scraped") or "")
+                    args.place_id = best.get("place_id", args.place_id)
+                    place = db.get_place(args.place_id)
 
-            rows = db.get_reviews(args.place_id)
-        finally:
-            db.close()
+                rows = db.get_reviews(args.place_id)
+            finally:
+                db.close()
 
         reviews = []
         for row in rows:
@@ -76,9 +85,9 @@ def main():
 
         print(json.dumps({
             "placeId": args.place_id,
-            "placeName": place.get("place_name") or args.place_name,
-            "officialTotalReviews": place.get("official_total_reviews", len(reviews)),
-            "officialAvgRating": place.get("official_avg_rating", 0),
+            "placeName": place.get("place_name") or place.get("name") or args.place_name,
+            "officialTotalReviews": place.get("official_total_reviews", place.get("officialTotalReviews", len(reviews))),
+            "officialAvgRating": place.get("official_avg_rating", place.get("officialAvgRating", 0)),
             "reviews": reviews,
         }, ensure_ascii=False))
     finally:

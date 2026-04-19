@@ -28,6 +28,7 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCo
 from modules.models import RawReview
 from modules.pipeline import PostScrapeRunner
 from modules.review_db import ReviewDB
+from modules.convex_store import ConvexReviewStore
 from modules.place_id import extract_place_id
 
 # Logger
@@ -163,7 +164,7 @@ REVIEW_WORDS = {
 }
 
 MIN_NEW_CARDS_FOR_FAST_SLEEP = 5
-BATCH_UPSERT_SIZE = 20
+BATCH_UPSERT_SIZE = 100
 SPECIAL_PLACEID_NHA_CAFE = "0x31a0890038ccfc4f:0x567ba2463308ff1d"
 
 
@@ -179,7 +180,11 @@ class GoogleReviewsScraper:
         self.cancel_event = cancel_event or threading.Event()
         self.progress_callback = progress_callback
         db_path = config.get("db_path", "reviews.db")
-        self.review_db = ReviewDB(db_path)
+        self.storage_backend = config.get("storage_backend", "convex")
+        if self.storage_backend == "sqlite":
+            self.review_db = ReviewDB(db_path)
+        else:
+            self.review_db = ConvexReviewStore(config)
 
     def _report_progress(self, stage: str, message: str, **kwargs):
         """Helper to report progress to the JobManager."""
@@ -1463,7 +1468,7 @@ class GoogleReviewsScraper:
             lat, lng = self._extract_place_coords(resolved_url)
             lat_f = float(lat) if lat else None
             lng_f = float(lng) if lng else None
-            place_id = self.review_db.upsert_place(
+            place_id = self.review_db.register_place(
                 place_id, place_name, url, resolved_url, lat_f, lng_f
             )
             self.last_place_id = place_id
@@ -1709,7 +1714,7 @@ class GoogleReviewsScraper:
                         idle = 0
                         attempts = 0
 
-                    if len(seen) % 5 == 0 or len(seen) < 10:
+                    if len(seen) % 25 == 0 or len(seen) < 10:
                         self._report_progress("scraped", f"Found {len(seen)} reviews", count=len(seen))
 
                     if consecutive_seen_items >= 5:

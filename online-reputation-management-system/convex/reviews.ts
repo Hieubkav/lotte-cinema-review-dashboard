@@ -126,12 +126,31 @@ export const upsertManyForPlace = mutationGeneric({
   handler: async (ctx, args) => {
     const now = new Date().toISOString();
     let upserted = 0;
+    let inserted = 0;
+    let updated = 0;
+    let unchanged = 0;
 
     for (const review of args.reviews) {
       const existing = await ctx.db
         .query("reviews")
         .withIndex("by_reviewId_placeId", (q: any) => q.eq("reviewId", review.reviewId).eq("placeId", args.placeId))
         .first();
+
+      const nextLikes = review.likes ?? 0;
+      const isUnchanged =
+        Boolean(existing) &&
+        (existing?.authorName ?? "") === (review.authorName ?? "") &&
+        (existing?.authorThumbnail ?? "") === (review.authorThumbnail ?? "") &&
+        Number(existing?.rating ?? 0) === Number(review.rating) &&
+        (existing?.text ?? "") === review.text &&
+        (existing?.isoDate ?? undefined) === (review.isoDate ?? undefined) &&
+        (existing?.rawDate ?? undefined) === (review.rawDate ?? undefined) &&
+        Number(existing?.likes ?? 0) === nextLikes;
+
+      if (isUnchanged) {
+        unchanged += 1;
+        continue;
+      }
 
       const payload = {
         reviewId: review.reviewId,
@@ -142,20 +161,22 @@ export const upsertManyForPlace = mutationGeneric({
         text: review.text,
         isoDate: review.isoDate,
         rawDate: review.rawDate,
-        likes: review.likes ?? 0,
+        likes: nextLikes,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       };
 
       if (existing) {
         await ctx.db.patch(existing._id, payload as any);
+        updated += 1;
       } else {
         await ctx.db.insert("reviews", payload as any);
+        inserted += 1;
       }
       upserted += 1;
     }
 
-    return { upserted };
+    return { upserted, inserted, updated, unchanged };
   },
 });
 

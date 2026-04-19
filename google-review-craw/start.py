@@ -63,6 +63,26 @@ def _apply_scrape_overrides(config, args):
         config.setdefault("custom_params", {}).update(custom_params)
 
 
+def _to_legacy_review_doc(review):
+    text = review.get("text") or ""
+    return {
+        "review_id": review.get("reviewId", ""),
+        "place_id": review.get("placeId", ""),
+        "author": review.get("authorName", ""),
+        "rating": review.get("rating", 0),
+        "review_text": {"vi": text} if text else {},
+        "raw_date": review.get("rawDate", ""),
+        "review_date": review.get("isoDate", ""),
+        "likes": review.get("likes", 0),
+        "user_images": [],
+        "profile_url": "",
+        "profile_picture": review.get("authorThumbnail", ""),
+        "owner_responses": {},
+        "created_date": review.get("createdAt", ""),
+        "last_modified": review.get("updatedAt", ""),
+    }
+
+
 def _get_db_path(config, args):
     """Resolve database path from CLI args or config."""
     if getattr(args, "db_path", None):
@@ -148,9 +168,36 @@ def _build_metrics_payload(reviews, official_avg_rating, official_total_reviews)
     }
 
 
+def _load_convex_place_reviews(scraper, config, url):
+    place_id = getattr(scraper, "last_place_id", None)
+    if not place_id:
+        return None, None
+
+    place_row = scraper.review_db.get_place(place_id) or {}
+    reviews = scraper.review_db.get_reviews(place_id)
+    if not reviews:
+        return place_row, []
+
+    place_snapshot = {
+        "place_id": place_id,
+        "place_name": place_row.get("name") or place_row.get("place_name") or config.get("custom_params", {}).get("company") or url,
+        "original_url": place_row.get("originalUrl") or place_row.get("original_url") or url,
+        "resolved_url": place_row.get("resolvedUrl") or place_row.get("resolved_url") or url,
+        "latitude": place_row.get("latitude"),
+        "longitude": place_row.get("longitude"),
+        "last_scraped": place_row.get("lastScrapedAt") or place_row.get("last_scraped"),
+        "total_reviews": place_row.get("officialTotalReviews", place_row.get("total_reviews", len(reviews))),
+        "official_total_reviews": place_row.get("officialTotalReviews", len(reviews)),
+        "official_avg_rating": place_row.get("officialAvgRating", 0),
+        "captured_total_reviews": place_row.get("capturedTotalReviews", len(reviews)),
+    }
+    return place_snapshot, reviews
+
+
 def _sync_place_to_convex(config, place_snapshot, reviews):
     """Push scraped SQLite data into Convex for frontend consumption."""
-    project_root = Path(__file__).resolve().parents[1]
+    start_file = Path.resolve(Path(__file__))
+    project_root = start_file.parents[1]
     web_root = project_root / "online-reputation-management-system"
     if not web_root.exists():
         raise RuntimeError(f"Không tìm thấy web app để sync Convex: {web_root}")
@@ -200,7 +247,7 @@ def _sync_place_to_convex(config, place_snapshot, reviews):
         ),
     }
 
-    payload_path = (web_root / "tmp-convex-sync-place.json").resolve()
+    payload_path = web_root / "tmp-convex-sync-place.json"
     payload_path.write_text(
         json.dumps(
             {
@@ -217,7 +264,7 @@ def _sync_place_to_convex(config, place_snapshot, reviews):
         result = subprocess.run(
             [
                 "C:\\Program Files\\nodejs\\node.exe",
-                str((web_root / "scripts" / "convex-sync-place.cjs").resolve()),
+                str(web_root / "scripts" / "convex-sync-place.cjs"),
                 str(payload_path),
             ],
             cwd=str(web_root),
@@ -344,30 +391,36 @@ def _run_scrape(config, args):
             if not success:
                 return False, url, None, None
 
-            place_id = getattr(scraper, "last_place_id", None)
-            if not place_id:
+            if biz_config.get("storage_backend", "convex") == "sqlite":
+                place_id = getattr(scraper, "last_place_id", None)
+                if not place_id:
+                    return True, url, None, None
+
+                place_row = scraper.review_db.get_place(place_id) or {}
+                reviews = scraper.review_db.get_reviews(place_id)
+                if not reviews:
+                    return True, url, place_row.get("place_name") or url, 0
+
+                place_snapshot = {
+                    "place_id": place_id,
+                    "place_name": place_row.get("place_name") or biz_config.get("custom_params", {}).get("company") or url,
+                    "original_url": place_row.get("original_url") or url,
+                    "resolved_url": place_row.get("resolved_url") or url,
+                    "latitude": place_row.get("latitude"),
+                    "longitude": place_row.get("longitude"),
+                    "last_scraped": place_row.get("last_scraped"),
+                    "total_reviews": place_row.get("official_total_reviews", place_row.get("total_reviews", len(reviews))),
+                    "official_total_reviews": place_row.get("official_total_reviews", len(reviews)),
+                    "official_avg_rating": place_row.get("official_avg_rating", 0),
+                    "captured_total_reviews": place_row.get("captured_total_reviews", len(reviews)),
+                }
+                _sync_place_to_convex(biz_config, place_snapshot, reviews)
+                print(f"Đã sync Convex: {place_snapshot['place_name']} ({len(reviews)} reviews)")
+                return True, url, place_snapshot["place_name"], len(reviews)
+
+            place_snapshot, reviews = _load_convex_place_reviews(scraper, biz_config, url)
+            if not place_snapshot:
                 return True, url, None, None
-
-            place_row = scraper.review_db.get_place(place_id) or {}
-            reviews = scraper.review_db.get_reviews(place_id)
-            if not reviews:
-                return True, url, place_row.get("place_name") or url, 0
-
-            place_snapshot = {
-                "place_id": place_id,
-                "place_name": place_row.get("place_name") or biz_config.get("custom_params", {}).get("company") or url,
-                "original_url": place_row.get("original_url") or url,
-                "resolved_url": place_row.get("resolved_url") or url,
-                "latitude": place_row.get("latitude"),
-                "longitude": place_row.get("longitude"),
-                "last_scraped": place_row.get("last_scraped"),
-                "total_reviews": place_row.get("official_total_reviews", place_row.get("total_reviews", len(reviews))),
-                "official_total_reviews": place_row.get("official_total_reviews", len(reviews)),
-                "official_avg_rating": place_row.get("official_avg_rating", 0),
-                "captured_total_reviews": place_row.get("captured_total_reviews", len(reviews)),
-            }
-            _sync_place_to_convex(biz_config, place_snapshot, reviews)
-            print(f"Đã sync Convex: {place_snapshot['place_name']} ({len(reviews)} reviews)")
             return True, url, place_snapshot["place_name"], len(reviews)
         finally:
             scraper.review_db.close()
