@@ -390,3 +390,13 @@ businesses:
       placeId: "0x31a0890038ccfc4f:0x567ba2463308ff1d"
       company: "Nhà cafe"
       source: "official-api"
+  - url: "https://www.google.com/maps/place/The+80's+M%E1%BA%A1c+Thi%C3%AAn+T%C3%ADch/@10.0282276,105.7684265,17z/data=!4m8!3m7!1s0x31a089c23b0ff99b:0xaaaefdd3ab7c3a24!8m2!3d10.0282276!4d105.7732974!9m1!1b1!16s%2Fg%2F11qswl_kwm?entry=ttu&g_ep=EgoyMDI2MDQxNS4wIKXMDSoASAFQAw%3D%3D"
+    custom_params:
+      placeId: "0x31a089c23b0ff99b:0xaaaefdd3ab7c3a24"
+      company: "The 80's Mạc Thiên Tích"
+      source: "official-api"
+  - url: "https://www.google.com/maps/place/The+80%E2%80%99s+coffee+24h/@10.0295423,105.7508926,17z/data=!4m8!3m7!1s0x31a089ab42cb30d9:0x7083181f5bb88f87!8m2!3d10.0295423!4d105.7534675!9m1!1b1!16s%2Fg%2F11t5_w0tb7?entry=ttu&g_ep=EgoyMDI2MDQxNS4wIKXMDSoASAFQAw%3D%3D"
+    custom_params:
+      placeId: "0x31a089ab42cb30d9:0x7083181f5bb88f87"
+      company: "The 80’s coffee 24h"
+      source: "official-api"
