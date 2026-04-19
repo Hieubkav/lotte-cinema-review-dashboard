@@ -211,6 +211,18 @@ export const cleanupByPlace = mutationGeneric({
   },
 });
 
+export const listByPlaceForMigration = queryGeneric({
+  args: {
+    placeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("reviews")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+  },
+});
+
 export const cleanupMockReviews = mutationGeneric({
   args: {
     placeId: v.optional(v.string()),

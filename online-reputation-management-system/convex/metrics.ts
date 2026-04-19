@@ -73,3 +73,15 @@ export const upsertForPlace = mutationGeneric({
     return await ctx.db.insert("branchDailyMetrics", payload as any);
   },
 });
+
+export const listByPlaceForMigration = queryGeneric({
+  args: {
+    placeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("branchDailyMetrics")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+  },
+});

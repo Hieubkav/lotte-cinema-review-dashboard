@@ -165,6 +165,7 @@ REVIEW_WORDS = {
 
 MIN_NEW_CARDS_FOR_FAST_SLEEP = 5
 BATCH_UPSERT_SIZE = 100
+TARGET_NEW_REVIEWS_PER_ITERATION = 30
 SPECIAL_PLACEID_NHA_CAFE = "0x31a0890038ccfc4f:0x567ba2463308ff1d"
 
 
@@ -1613,29 +1614,48 @@ class GoogleReviewsScraper:
                         consecutive_no_cards = 0  # Reset counter when we find cards
 
                     batch_seen_count = 0  # Cards already in DB (for batch stop)
-                    for c in cards:
+                    target_fresh_cards = TARGET_NEW_REVIEWS_PER_ITERATION
+                    gather_attempts = 0
+                    max_gather_attempts = 3
+                    while True:
+                        for c in cards:
+                            try:
+                                cid = c.get_attribute("data-review-id")
+                                if not cid or cid in processed_ids:
+                                    continue
+                                processed_ids.add(cid)
+                                if cid in seen:
+                                    batch_seen_count += 1
+                                    consecutive_seen_items += 1
+                                    if consecutive_seen_items >= 5:
+                                        log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews (pre-parse)")
+                                        idle = 999
+                                        break
+                                    continue
+
+                                consecutive_seen_items = 0
+                                fresh_cards.append(c)
+                            except StaleElementReferenceException:
+                                continue
+                            except Exception as e:
+                                log.debug(f"Error getting review ID: {e}")
+                                continue
+
+                        if idle >= 999 or len(fresh_cards) >= target_fresh_cards or gather_attempts >= max_gather_attempts:
+                            break
+
                         try:
-                            cid = c.get_attribute("data-review-id")
-                            if not cid or cid in processed_ids:
-                                continue
-                            processed_ids.add(cid)
-                            if cid in seen:
-                                batch_seen_count += 1
-                                consecutive_seen_items += 1
-                                if consecutive_seen_items >= 5:
-                                    log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews (pre-parse)")
-                                    idle = 999
-                                    break
-                                continue
-                            
-                            # Found a review ID we haven't processed - reset consecutive count
-                            consecutive_seen_items = 0
-                            fresh_cards.append(c)
-                        except StaleElementReferenceException:
-                            continue
+                            driver.execute_script(scroll_script)
+                            self._adaptive_sleep(0.2, 0.05)
+                            driver.execute_script("window.scrollBy(0, 500);")
+                            self._adaptive_sleep(0.2, 0.05)
+                            cards = pane.find_elements(By.CSS_SELECTOR, CARD_SEL)
+                            if not cards:
+                                cards = driver.find_elements(By.CSS_SELECTOR, 'div[data-review-id]')
                         except Exception as e:
-                            log.debug(f"Error getting review ID: {e}")
-                            continue
+                            log.warning(f"Error gathering more review cards: {e}")
+                            break
+                        gather_attempts += 1
 
                     batch_total = len(fresh_cards) + batch_seen_count
                     batch_unchanged = batch_seen_count
