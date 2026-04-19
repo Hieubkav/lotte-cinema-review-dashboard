@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -11,6 +12,8 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL || '';
+const convexClient = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 function applyTheme(theme: ThemeMode) {
   if (typeof document === 'undefined') return;
@@ -43,7 +46,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setTheme,
   }), [theme]);
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  const themedChildren = <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+
+  if (!convexClient) {
+    return themedChildren;
+  }
+
+  return <ConvexProvider client={convexClient}>{themedChildren}</ConvexProvider>;
 }
 
 export function useTheme() {

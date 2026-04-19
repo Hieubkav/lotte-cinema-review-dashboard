@@ -3,7 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from 'convex/react';
 import { convexMutation } from '@/lib/convex';
+import { api } from '../../../../convex/_generated/api';
 import {
   Star, Tags, FilterX, CalendarDays, Search, Activity, RefreshCcw, ExternalLink,
   ChevronLeft, ChevronRight
@@ -11,7 +13,7 @@ import {
 import ReviewCard from '../components/ReviewCard';
 import { TAG_KEYS, TAG_LABELS, type TagKey } from '../utils';
 
-const STAR_BUCKETS = ['0-1', '1-2', '2-3', '3-4', '4-5'] as const;
+const STAR_BUCKETS = ['1-2', '2-3', '3-4', '4-5'] as const;
 type StarBucket = (typeof STAR_BUCKETS)[number];
 
 type Review = {
@@ -63,17 +65,41 @@ export default function PlaceDetailView({
 }: PlaceDetailViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [searchInput, setSearchInput] = React.useState(searchQuery);
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [syncError, setSyncError] = React.useState<string | null>(null);
   const [isDeletingData, setIsDeletingData] = React.useState(false);
   const [isDeletingBranch, setIsDeletingBranch] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
+  const liveReviewResult = useQuery(api.reviews.paginatedByPlace, {
+    placeId: place.placeId,
+    page,
+    limit: 24,
+    q: searchQuery.trim() || undefined,
+    tags: selectedTags,
+    stars: selectedStars,
+    sort,
+  });
+  const reviewSummary = useQuery(api.reviews.summaryByPlace, {
+    placeId: place.placeId,
+  });
+
+  const liveReviews = liveReviewResult?.reviews ?? reviews;
+  const liveTotal = liveReviewResult?.total ?? total;
+  const livePage = liveReviewResult?.page ?? page;
+  const liveTotalPages = liveReviewResult?.totalPages ?? totalPages;
+  const capturedAvgRating = reviewSummary?.capturedAvgRating ?? 0;
+
+  React.useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
   const pageNumbers = React.useMemo(() => {
-    if (totalPages <= 1) return [];
-    const pages = new Set<number>([1, totalPages, page - 1, page, page + 1]);
-    return Array.from(pages).filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
-  }, [page, totalPages]);
+    if (liveTotalPages <= 1) return [];
+    const pages = new Set<number>([1, liveTotalPages, livePage - 1, livePage, livePage + 1]);
+    return Array.from(pages).filter((p) => p >= 1 && p <= liveTotalPages).sort((a, b) => a - b);
+  }, [livePage, liveTotalPages]);
 
   const startSync = async () => {
     setIsSyncing(true);
@@ -146,6 +172,20 @@ export default function PlaceDetailView({
     [router, searchParams]
   );
 
+  React.useEffect(() => {
+    const normalized = searchInput.trim();
+    if (normalized === searchQuery) return;
+
+    const timer = window.setTimeout(() => {
+      updateFilters((params) => {
+        if (normalized) params.set('q', normalized);
+        else params.delete('q');
+      });
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [searchInput, searchQuery, updateFilters]);
+
   return (
     <div className="min-h-screen bg-background text-primary">
       <div className="sticky top-0 z-30 apple-nav px-6 lg:px-10 flex items-center h-[48px]">
@@ -181,14 +221,8 @@ export default function PlaceDetailView({
               <input
                 type="text"
                 placeholder="Tìm trong đánh giá..."
-                value={searchQuery}
-                onChange={(e) =>
-                  updateFilters((params) => {
-                    const value = e.target.value.trim();
-                    if (value) params.set('q', value);
-                    else params.delete('q');
-                  })
-                }
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full h-8 bg-white/10 border-none focus:bg-white/[0.15] rounded-[11px] pl-9 pr-8 text-[13px] text-white placeholder:text-white/30 outline-none transition-all"
                 style={{ letterSpacing: '-0.12px' }}
               />
@@ -224,10 +258,10 @@ export default function PlaceDetailView({
                 <div>
                   <p className="text-[12px] font-bold text-tertiary uppercase" style={{ letterSpacing: '0.05em' }}>Điểm trung bình</p>
                   <p className="text-3xl font-bold text-primary mt-1.5 leading-[1.07] tabular-nums" style={{ fontFamily: '"SF Pro Display", -apple-system, sans-serif', letterSpacing: '-0.28px' }}>
-                    {Number(place.currentAverageRating || 0).toFixed(1)}
+                    {Number(capturedAvgRating || 0).toFixed(1)}
                   </p>
                   <p className="text-[13px] text-tertiary mt-1.5 leading-[1.47]" style={{ letterSpacing: '-0.374px' }}>
-                    Theo số liệu Google hiện tại
+                    Theo toàn bộ đánh giá đã capture
                   </p>
                 </div>
               </div>
@@ -239,7 +273,7 @@ export default function PlaceDetailView({
                 <div>
                   <p className="text-[12px] font-bold text-tertiary uppercase" style={{ letterSpacing: '0.05em' }}>Tổng số đánh giá</p>
                   <p className="text-3xl font-bold text-primary mt-1.5 leading-[1.07] tabular-nums" style={{ fontFamily: '"SF Pro Display", -apple-system, sans-serif', letterSpacing: '-0.28px' }}>
-                    {total.toLocaleString('vi-VN')}
+                    {Number(place.currentTotalReviews || total).toLocaleString('vi-VN')}
                   </p>
                   <p className="text-[13px] text-tertiary mt-1.5 leading-[1.47]" style={{ letterSpacing: '-0.374px' }}>
                     Hiển thị 24 đánh giá mỗi trang
@@ -256,7 +290,7 @@ export default function PlaceDetailView({
                     Danh sách đánh giá
                   </h4>
                   <p className="text-[13px] text-tertiary mt-1.5 leading-[1.47]" style={{ letterSpacing: '-0.374px' }}>
-                    Tổng {total.toLocaleString('vi-VN')} đánh giá, trang {page}/{Math.max(totalPages, 1)}
+                    Tổng {liveTotal.toLocaleString('vi-VN')} đánh giá, trang {livePage}/{Math.max(liveTotalPages, 1)}
                   </p>
                 </div>
 
@@ -351,24 +385,24 @@ export default function PlaceDetailView({
                 <p className="text-sm text-[#ff453a]">{deleteError}</p>
               )}
 
-              {reviews.length === 0 ? (
+              {liveReviews.length === 0 ? (
                 <div className="py-12 text-center text-tertiary">Không tìm thấy đánh giá phù hợp.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {reviews.map((review, idx) => (
+                  {liveReviews.map((review, idx) => (
                     <ReviewCard key={review._id || review.reviewId || idx} review={review} highlightedReviewId={null} />
                   ))}
                 </div>
               )}
 
-              {totalPages > 1 && (
+              {liveTotalPages > 1 && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
                   <div className="text-sm text-tertiary">
-                    Đang xem trang <span className="text-primary font-semibold">{page}</span> trên <span className="text-primary font-semibold">{totalPages}</span>
+                    Đang xem trang <span className="text-primary font-semibold">{livePage}</span> trên <span className="text-primary font-semibold">{liveTotalPages}</span>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
-                    {page <= 1 ? (
+                    {livePage <= 1 ? (
                       <span
                         aria-disabled
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors pointer-events-none bg-[var(--surface-3)] text-tertiary/50"
@@ -378,7 +412,7 @@ export default function PlaceDetailView({
                       </span>
                     ) : (
                       <Link
-                        href={buildPageHref(page - 1, currentParams)}
+                        href={buildPageHref(livePage - 1, currentParams)}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary"
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -394,7 +428,7 @@ export default function PlaceDetailView({
                           {showDots && <span className="px-1 text-tertiary">...</span>}
                           <Link
                             href={buildPageHref(pageNumber, currentParams)}
-                            className={`min-w-10 h-10 inline-flex items-center justify-center rounded-full text-sm font-semibold transition-colors ${pageNumber === page ? 'bg-[#0071e3] text-white' : 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary'}`}
+                            className={`min-w-10 h-10 inline-flex items-center justify-center rounded-full text-sm font-semibold transition-colors ${pageNumber === livePage ? 'bg-[#0071e3] text-white' : 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary'}`}
                           >
                             {pageNumber}
                           </Link>
@@ -402,7 +436,7 @@ export default function PlaceDetailView({
                       );
                     })}
 
-                    {page >= totalPages ? (
+                    {livePage >= liveTotalPages ? (
                       <span
                         aria-disabled
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors pointer-events-none bg-[var(--surface-3)] text-tertiary/50"
@@ -412,7 +446,7 @@ export default function PlaceDetailView({
                       </span>
                     ) : (
                       <Link
-                        href={buildPageHref(page + 1, currentParams)}
+                        href={buildPageHref(livePage + 1, currentParams)}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-[980px] text-sm font-semibold transition-colors bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-primary"
                       >
                         Trang sau

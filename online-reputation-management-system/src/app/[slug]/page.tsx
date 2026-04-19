@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 24;
 const SORT_OPTIONS = new Set(['date_desc', 'date_asc']);
-const STAR_BUCKETS = ['0-1', '1-2', '2-3', '3-4', '4-5'] as const;
+const STAR_BUCKETS = ['1-2', '2-3', '3-4', '4-5'] as const;
 type StarBucket = (typeof STAR_BUCKETS)[number];
 
 function normalizeSearchQuery(value?: string) {
@@ -109,7 +109,7 @@ export default async function PlacePage({
 
   const viewPlace = {
     ...place,
-    currentAverageRating: place.officialAvgRating ?? 0,
+    currentAverageRating: 0,
     currentTotalReviews: place.officialTotalReviews ?? reviewResult?.total ?? 0,
   };
 
