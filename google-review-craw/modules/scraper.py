@@ -1575,6 +1575,8 @@ class GoogleReviewsScraper:
                 log.warning("Could not find reviews pane with any selector. Page structure might have changed.")
                 return False
 
+            initial_seen_count = len(seen)
+
             progress = Progress(
                 SpinnerColumn(),
                 TextColumn("[bold blue]{task.description}"),
@@ -1596,7 +1598,7 @@ class GoogleReviewsScraper:
                 log.warning(f"Error setting up scroll script: {e}")
                 scroll_script = "window.scrollBy(0, 300);"  # Fallback to simple scrolling
 
-            adaptive_targets = [30, 20, 10] if max_reviews == 0 else []
+            adaptive_targets = [30, 20, 10] if max_reviews == 0 and place_id != SPECIAL_PLACEID_NHA_CAFE else []
             adaptive_target_index = 0
             adaptive_target = adaptive_targets[0] if adaptive_targets else max_reviews
             adaptive_idle_stage = 0
@@ -1761,8 +1763,14 @@ class GoogleReviewsScraper:
                         idle = 0
                         attempts = 0
 
-                    if len(seen) % 25 == 0 or len(seen) < 10:
-                        self._report_progress("scraped", f"Found {len(seen)} reviews", count=len(seen))
+                    session_seen_count = max(0, len(seen) - initial_seen_count)
+
+                    if session_seen_count % 25 == 0 or session_seen_count < 10:
+                        self._report_progress(
+                            "scraped",
+                            f"Found {session_seen_count} new reviews this run ({len(seen)} total)",
+                            count=session_seen_count,
+                        )
 
                     if consecutive_seen_items >= 5:
                         log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews")
@@ -1770,11 +1778,11 @@ class GoogleReviewsScraper:
 
                     active_max_reviews = adaptive_target if adaptive_targets else max_reviews
 
-                    if active_max_reviews > 0 and len(seen) >= active_max_reviews:
+                    if active_max_reviews > 0 and session_seen_count >= active_max_reviews:
                         log.info("Reached max_reviews limit (%d), stopping.", active_max_reviews)
                         idle = 999
 
-                    if special_target_reviews > 0 and len(seen) >= special_target_reviews:
+                    if special_target_reviews > 0 and session_seen_count >= special_target_reviews:
                         log.info("Reached hard cap for Nhà cafe (%d), stopping.", special_target_reviews)
                         idle = 999
 
@@ -1815,7 +1823,9 @@ class GoogleReviewsScraper:
                             log.info(f"Stopping: No new reviews found after {max_idle} scroll attempts")
                             break
 
-                        log.info(f"No new reviews in this iteration (idle: {idle}/{max_idle}, attempts: {attempts}/{max_attempts}, total seen: {len(seen)})")
+                        log.info(
+                            f"No new reviews in this iteration (idle: {idle}/{max_idle}, attempts: {attempts}/{max_attempts}, session seen: {session_seen_count}, total seen: {len(seen)})"
+                        )
 
                         try:
                             driver.execute_script(scroll_script)
