@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import PlaceDetailView from '@/components/dashboard/views/PlaceDetailView';
 import { convexQuery } from '@/lib/convex';
-import { isLegacyPlaceSlug } from '@/lib/slug';
+import { isLegacyPlaceSlug, slugifyPlaceName } from '@/lib/slug';
 import { TAG_KEYS, type TagKey } from '@/components/dashboard/utils';
 
 export const dynamic = 'force-dynamic';
@@ -76,6 +76,15 @@ export default async function PlacePage({
     place = await convexQuery<any>('places:getBySlug', { slug });
   } catch {
     notFound();
+  }
+
+  if (!place) {
+    try {
+      const places = await convexQuery<any[]>('places:list', {});
+      place = (places || []).find((row: any) => slugifyPlaceName(row?.name || '') === slug) ?? null;
+    } catch {
+      notFound();
+    }
   }
 
   if (!place) notFound();
