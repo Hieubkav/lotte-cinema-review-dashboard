@@ -1532,14 +1532,6 @@ class GoogleReviewsScraper:
             except Exception as sort_error:
                 log.warning(f"Sort failed but continuing: {sort_error}")
 
-            # For Nhà cafe strict case: keep existing scrolling behavior but hard-cap at 100 reviews
-            special_target_reviews = 0
-            if place_id == SPECIAL_PLACEID_NHA_CAFE:
-                stop_threshold = 0
-                scroll_idle_limit = max(scroll_idle_limit, 40)
-                special_target_reviews = 100
-                log.info("Nhà cafe detected: disabling early-stop and setting hard cap to 100 reviews")
-
             # We always try to use early-stop if sorting is set to newest,
             # even if the automated confirmation was ambiguous.
             if stop_threshold > 0 and sort_by != "newest":
@@ -1598,7 +1590,7 @@ class GoogleReviewsScraper:
                 log.warning(f"Error setting up scroll script: {e}")
                 scroll_script = "window.scrollBy(0, 300);"  # Fallback to simple scrolling
 
-            adaptive_targets = [30, 20, 10] if max_reviews == 0 and place_id != SPECIAL_PLACEID_NHA_CAFE else []
+            adaptive_targets = [30, 20, 10] if max_reviews == 0 else []
             adaptive_target_index = 0
             adaptive_target = adaptive_targets[0] if adaptive_targets else max_reviews
             adaptive_idle_stage = 0
@@ -1780,10 +1772,6 @@ class GoogleReviewsScraper:
 
                     if active_max_reviews > 0 and session_seen_count >= active_max_reviews:
                         log.info("Reached max_reviews limit (%d), stopping.", active_max_reviews)
-                        idle = 999
-
-                    if special_target_reviews > 0 and session_seen_count >= special_target_reviews:
-                        log.info("Reached hard cap for Nhà cafe (%d), stopping.", special_target_reviews)
                         idle = 999
 
                     # Batch-level stop: entire scroll iteration was unchanged.
