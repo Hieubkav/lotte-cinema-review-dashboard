@@ -1648,10 +1648,6 @@ class GoogleReviewsScraper:
                                 if cid in seen:
                                     batch_seen_count += 1
                                     consecutive_seen_items += 1
-                                    if consecutive_seen_items >= 5:
-                                        log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews (pre-parse)")
-                                        idle = 999
-                                        break
                                     continue
 
                                 consecutive_seen_items = 0
@@ -1662,7 +1658,7 @@ class GoogleReviewsScraper:
                                 log.debug(f"Error getting review ID: {e}")
                                 continue
 
-                        if idle >= 999 or len(fresh_cards) >= target_fresh_cards or gather_attempts >= max_gather_attempts:
+                        if len(fresh_cards) >= target_fresh_cards or gather_attempts >= max_gather_attempts:
                             break
 
                         try:
@@ -1764,10 +1760,6 @@ class GoogleReviewsScraper:
                             count=session_seen_count,
                         )
 
-                    if consecutive_seen_items >= 5:
-                        log.info(f"Stopping: Found {consecutive_seen_items} consecutive existing reviews")
-                        idle = 999
-
                     active_max_reviews = adaptive_target if adaptive_targets else max_reviews
 
                     if active_max_reviews > 0 and session_seen_count >= active_max_reviews:
@@ -1788,6 +1780,12 @@ class GoogleReviewsScraper:
                                 idle = 999
                         else:
                             consecutive_matched_batches = 0
+
+                    if batch_total > 0 and batch_seen_count == batch_total and not fresh_cards:
+                        log.info(
+                            "Encountered %d existing reviews in current batch; continuing to scroll deeper",
+                            batch_seen_count,
+                        )
 
                     if not fresh_cards:
                         idle += 1
