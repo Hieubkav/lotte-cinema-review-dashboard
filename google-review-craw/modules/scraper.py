@@ -537,43 +537,19 @@ class GoogleReviewsScraper:
         except Exception as e:
             log.debug(f"Warm-up navigation failed: {e}")
 
-        custom_params = self.config.get("custom_params") or {}
-        expected_place_id = self._normalize_place_id(custom_params.get("placeId"))
-
-        if expected_place_id == SPECIAL_PLACEID_NHA_CAFE:
-            place_name = self._extract_place_name(driver, url)
-            encoded_place_name = quote(unquote(place_name or "").strip())
-
-            fallback_urls = [url]
-            fallback_urls.append(
-                f"https://www.google.com/maps/search/?api=1&query_place_id={expected_place_id}"
-            )
-            fallback_urls.append(
-                f"https://www.google.com/maps/place/?q=place_id:{expected_place_id}"
-            )
-            if encoded_place_name:
-                fallback_urls.append(
-                    f"https://www.google.com/maps/search/?api=1&query={encoded_place_name}&query_place_id={expected_place_id}"
-                )
-
-            seen = set()
-            for candidate_url in fallback_urls:
-                if not candidate_url or candidate_url in seen:
-                    continue
-                seen.add(candidate_url)
-                if self._navigate_and_validate_place_id(
-                    driver,
-                    wait,
-                    candidate_url,
-                    url,
-                    expected_place_id,
-                ):
-                    log.info("Navigation resolved to expected place_id: %s", expected_place_id)
-                    return True
-
-            raise RuntimeError(
-                f"Could not resolve expected placeId '{expected_place_id}' from configured URL and fallbacks"
-            )
+        if self._is_direct_place_url(url):
+            log.info("Using standardized direct maps/place flow")
+            driver.get(url)
+            log.info("Direct maps/place URL detected, refreshing once before continuing")
+            time.sleep(2)
+            driver.refresh()
+            try:
+                wait.until(lambda d: "google.com/maps" in d.current_url)
+            except TimeoutException:
+                log.warning("Timed out waiting for Google Maps to load")
+            time.sleep(3)
+            self.dismiss_cookies(driver)
+            return True
 
         place_name = self._extract_place_name(driver, url)
         current_url = driver.current_url
