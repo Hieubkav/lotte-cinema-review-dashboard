@@ -5,7 +5,7 @@ export default defineSchema({
   places: defineTable({
     placeId: v.string(),
     name: v.string(),
-    slug: v.string(),
+    slug: v.optional(v.string()),
     originalUrl: v.optional(v.string()),
     resolvedUrl: v.optional(v.string()),
     latitude: v.optional(v.number()),

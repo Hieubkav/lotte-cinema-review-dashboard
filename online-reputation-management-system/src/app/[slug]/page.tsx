@@ -71,56 +71,50 @@ export default async function PlacePage({
   const stars = normalizeStars(resolvedSearchParams.stars);
   const sort = normalizeSort(resolvedSearchParams.sort);
 
+  let place: any;
   try {
-    const [place, reviewResult] = await Promise.all([
-      convexQuery<any>('places:getBySlug', { slug }),
-      convexQuery<any>('reviews:paginatedByPlace', {
-        placeId: slug,
-        page,
-        limit: PAGE_SIZE,
-        q,
-        tags,
-        stars,
-        sort,
-      }),
-    ]);
-
-    if (!place) notFound();
-    const resolvedPlaceId = place.placeId;
-    if (!resolvedPlaceId) notFound();
-    const normalizedReviewResult =
-      resolvedPlaceId === slug
-        ? reviewResult
-        : await convexQuery<any>('reviews:paginatedByPlace', {
-            placeId: resolvedPlaceId,
-            page,
-            limit: PAGE_SIZE,
-            q,
-            tags,
-            stars,
-            sort,
-          });
-
-    const viewPlace = {
-      ...place,
-      currentAverageRating: place.officialAvgRating ?? 0,
-      currentTotalReviews: place.officialTotalReviews ?? normalizedReviewResult.total ?? 0,
-    };
-
-    return (
-      <PlaceDetailView
-        place={viewPlace}
-        reviews={(normalizedReviewResult.reviews || []).map(serializeReview)}
-        page={normalizedReviewResult.page || page}
-        total={normalizedReviewResult.total || 0}
-        totalPages={normalizedReviewResult.totalPages || 0}
-        searchQuery={q ?? ''}
-        selectedTags={tags}
-        selectedStars={stars}
-        sort={sort}
-      />
-    );
+    place = await convexQuery<any>('places:getBySlug', { slug });
   } catch {
     notFound();
   }
+
+  if (!place) notFound();
+
+  const resolvedPlaceId = place.placeId;
+  if (!resolvedPlaceId) notFound();
+
+  let reviewResult: any;
+  try {
+    reviewResult = await convexQuery<any>('reviews:paginatedByPlace', {
+      placeId: resolvedPlaceId,
+      page,
+      limit: PAGE_SIZE,
+      q,
+      tags,
+      stars,
+      sort,
+    });
+  } catch {
+    notFound();
+  }
+
+  const viewPlace = {
+    ...place,
+    currentAverageRating: place.officialAvgRating ?? 0,
+    currentTotalReviews: place.officialTotalReviews ?? reviewResult?.total ?? 0,
+  };
+
+  return (
+    <PlaceDetailView
+      place={viewPlace}
+      reviews={(reviewResult?.reviews || []).map(serializeReview)}
+      page={reviewResult?.page || page}
+      total={reviewResult?.total || 0}
+      totalPages={reviewResult?.totalPages || 0}
+      searchQuery={q ?? ''}
+      selectedTags={tags}
+      selectedStars={stars}
+      sort={sort}
+    />
+  );
 }
