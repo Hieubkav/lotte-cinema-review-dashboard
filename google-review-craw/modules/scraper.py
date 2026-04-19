@@ -637,6 +637,12 @@ class GoogleReviewsScraper:
         Uses multiple detection approaches for maximum reliability.
         """
         try:
+            negative_words = {
+                "thực đơn", "menu", "food", "món", "photos", "ảnh", "overview",
+                "tổng quan", "about", "giới thiệu", "updates", "bài viết",
+                "posts", "services", "dịch vụ", "directions", "chỉ đường",
+            }
+
             # Strategy 1: Data attribute detection (most reliable across languages)
             tab_index = tab.get_attribute("data-tab-index")
             if tab_index == "1" or tab_index == "reviews":
@@ -644,22 +650,24 @@ class GoogleReviewsScraper:
 
             # Strategy 2: Role and aria attributes (accessibility detection)
             role = tab.get_attribute("role")
-            aria_selected = tab.get_attribute("aria-selected")
             aria_label = (tab.get_attribute("aria-label") or "").lower()
-
-            # Many review tabs have role="tab" and data attributes
-            if role == "tab" and any(word in aria_label for word in REVIEW_WORDS):
-                return True
 
             # Strategy 3: Text content detection (multiple sources)
             sources = [
                 tab.text.lower() if tab.text else "",  # Direct text
                 aria_label,  # ARIA label
-                tab.get_attribute("innerHTML").lower() or "",  # Inner HTML
                 tab.get_attribute("textContent").lower() or ""  # Text content
             ]
 
-            # Check all sources against our comprehensive keyword list
+            joined_sources = " ".join(source for source in sources if source)
+            if any(word in joined_sources for word in negative_words):
+                return False
+
+            # Many review tabs have role="tab" and review semantics
+            if role == "tab" and any(word in joined_sources for word in REVIEW_WORDS):
+                return True
+
+            # Check visible sources against our comprehensive keyword list
             for source in sources:
                 if any(word in source for word in REVIEW_WORDS):
                     return True
@@ -671,6 +679,10 @@ class GoogleReviewsScraper:
                     try:
                         child_text = child.text.lower() if child.text else ""
                         child_content = child.get_attribute("textContent").lower() or ""
+
+                        nested = f"{child_text} {child_content}".strip()
+                        if any(word in nested for word in negative_words):
+                            continue
 
                         if any(word in child_text for word in REVIEW_WORDS) or any(
                                 word in child_content for word in REVIEW_WORDS):
@@ -866,9 +878,6 @@ class GoogleReviewsScraper:
         try:
             # Common elements that appear when reviews tab is active
             verification_selectors = [
-                # Reviews container
-                'div.m6QErb.DxyBCb.kA9KIf.dS8AEf',
-
                 # Review cards
                 'div[data-review-id]',
 
@@ -886,7 +895,7 @@ class GoogleReviewsScraper:
             # Check if any verification selector is present
             for selector in verification_selectors:
                 elements = driver.find_elements(By.CSS_SELECTOR, selector)
-                if elements and len(elements) > 0:
+                if elements and any(element.is_displayed() for element in elements):
                     return True
 
             # URL check - if "review" appears in the URL

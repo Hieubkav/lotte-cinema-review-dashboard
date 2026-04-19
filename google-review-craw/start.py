@@ -175,9 +175,6 @@ def _load_convex_place_reviews(scraper, config, url):
 
     place_row = scraper.review_db.get_place(place_id) or {}
     reviews = scraper.review_db.get_reviews(place_id)
-    if not reviews:
-        return place_row, []
-
     place_snapshot = {
         "place_id": place_id,
         "place_name": place_row.get("name") or place_row.get("place_name") or config.get("custom_params", {}).get("company") or url,
@@ -191,6 +188,9 @@ def _load_convex_place_reviews(scraper, config, url):
         "official_avg_rating": place_row.get("officialAvgRating", 0),
         "captured_total_reviews": place_row.get("capturedTotalReviews", len(reviews)),
     }
+    if not reviews:
+        return place_snapshot, []
+
     return place_snapshot, reviews
 
 
