@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { convexMutation } from '@/lib/convex';
 import {
   Star, Tags, FilterX, CalendarDays, Search, Activity, RefreshCcw, ExternalLink,
   ChevronLeft, ChevronRight
@@ -64,6 +65,9 @@ export default function PlaceDetailView({
   const searchParams = useSearchParams();
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [syncError, setSyncError] = React.useState<string | null>(null);
+  const [isDeletingData, setIsDeletingData] = React.useState(false);
+  const [isDeletingBranch, setIsDeletingBranch] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const pageNumbers = React.useMemo(() => {
     if (totalPages <= 1) return [];
@@ -89,6 +93,43 @@ export default function PlaceDetailView({
       setSyncError(error instanceof Error ? error.message : 'Đồng bộ thất bại');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleDeleteBranchData = async () => {
+    if (isDeletingData || isDeletingBranch) return;
+    const confirmed = window.confirm(`Xóa toàn bộ đánh giá và metrics của chi nhánh "${place.name}"?`);
+    if (!confirmed) return;
+
+    setIsDeletingData(true);
+    setDeleteError(null);
+
+    try {
+      await convexMutation('reviews:cleanupByPlace', { placeId: place.placeId });
+      router.refresh();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Xóa dữ liệu thất bại');
+    } finally {
+      setIsDeletingData(false);
+    }
+  };
+
+  const handleDeleteBranch = async () => {
+    if (isDeletingData || isDeletingBranch) return;
+    const confirmed = window.confirm(`Xóa chi nhánh "${place.name}" và toàn bộ dữ liệu liên quan?`);
+    if (!confirmed) return;
+
+    setIsDeletingBranch(true);
+    setDeleteError(null);
+
+    try {
+      await convexMutation('places:removeBranch', { placeId: place.placeId });
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Xóa chi nhánh thất bại');
+    } finally {
+      setIsDeletingBranch(false);
     }
   };
 
@@ -306,6 +347,10 @@ export default function PlaceDetailView({
                 <p className="text-sm text-[#ff453a]">{syncError}</p>
               )}
 
+              {deleteError && (
+                <p className="text-sm text-[#ff453a]">{deleteError}</p>
+              )}
+
               {reviews.length === 0 ? (
                 <div className="py-12 text-center text-tertiary">Không tìm thấy đánh giá phù hợp.</div>
               ) : (
@@ -403,6 +448,33 @@ export default function PlaceDetailView({
                   <p className="text-primary font-semibold">{place.lastScraped ? new Date(place.lastScraped).toLocaleString('vi-VN') : 'Chưa có dữ liệu'}</p>
                 </div>
               </div>
+            </div>
+
+            <div className="apple-card sticky top-[28rem] mt-6 p-6 flex flex-col gap-4 border border-[#ff453a]/20">
+              <div>
+                <h4 className="text-[17px] font-bold text-primary leading-[1.29]" style={{ fontFamily: '"SF Pro Display", -apple-system, sans-serif', letterSpacing: '-0.224px' }}>
+                  Thao tác dữ liệu
+                </h4>
+                <p className="text-[13px] text-tertiary mt-1.5 leading-[1.47]" style={{ letterSpacing: '-0.374px' }}>
+                  Hai thao tác này là riêng biệt và không thể hoàn tác tự động.
+                </p>
+              </div>
+
+              <button
+                onClick={handleDeleteBranchData}
+                disabled={isDeletingData || isDeletingBranch}
+                className="w-full flex items-center justify-center gap-2 h-10 px-4 rounded-[12px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/15 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[13px] font-semibold"
+              >
+                {isDeletingData ? 'Đang xóa dữ liệu...' : 'Xóa dữ liệu chi nhánh'}
+              </button>
+
+              <button
+                onClick={handleDeleteBranch}
+                disabled={isDeletingData || isDeletingBranch}
+                className="w-full flex items-center justify-center gap-2 h-10 px-4 rounded-[12px] bg-[#ff453a]/10 text-[#ff6b61] hover:bg-[#ff453a]/15 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[13px] font-semibold"
+              >
+                {isDeletingBranch ? 'Đang xóa chi nhánh...' : 'Xóa chi nhánh'}
+              </button>
             </div>
           </div>
         </div>

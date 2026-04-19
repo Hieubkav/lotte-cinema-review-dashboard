@@ -120,3 +120,75 @@ export const seedFromLegacyOfficialApi = actionGeneric({
     };
   },
 });
+
+export const removeBranch = mutationGeneric({
+  args: { placeId: v.string() },
+  handler: async (ctx, args) => {
+    const place = await ctx.db
+      .query("places")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .first();
+
+    const reviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+
+    const metrics = await ctx.db
+      .query("branchDailyMetrics")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+
+    const jobs = await ctx.db
+      .query("crawlJobs")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+
+    const checkpoints = await ctx.db
+      .query("crawlCheckpoints")
+      .withIndex("by_placeId", (q: any) => q.eq("placeId", args.placeId))
+      .collect();
+
+    let deletedJobEvents = 0;
+
+    for (const review of reviews) {
+      await ctx.db.delete(review._id);
+    }
+
+    for (const metric of metrics) {
+      await ctx.db.delete(metric._id);
+    }
+
+    for (const job of jobs) {
+      const events = await ctx.db
+        .query("crawlJobEvents")
+        .withIndex("by_jobId", (q: any) => q.eq("jobId", job.jobId))
+        .collect();
+
+      for (const event of events) {
+        await ctx.db.delete(event._id);
+        deletedJobEvents += 1;
+      }
+
+      await ctx.db.delete(job._id);
+    }
+
+    for (const checkpoint of checkpoints) {
+      await ctx.db.delete(checkpoint._id);
+    }
+
+    if (place) {
+      await ctx.db.delete(place._id);
+    }
+
+    return {
+      placeId: args.placeId,
+      deletedPlace: Boolean(place),
+      deletedReviews: reviews.length,
+      deletedMetrics: metrics.length,
+      deletedJobs: jobs.length,
+      deletedJobEvents,
+      deletedCheckpoints: checkpoints.length,
+    };
+  },
+});
