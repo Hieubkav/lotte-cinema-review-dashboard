@@ -86,6 +86,18 @@ class ConvexReviewStore(ReviewStore):
             + "\nHãy set convex.web_root trong config.yaml, ví dụ: ../online-reputation-management-system"
         )
 
+    @staticmethod
+    def _drop_none(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: ConvexReviewStore._drop_none(val)
+                for key, val in value.items()
+                if val is not None
+            }
+        if isinstance(value, list):
+            return [ConvexReviewStore._drop_none(item) for item in value]
+        return value
+
     def _run_convex(self, function_name: str, payload: Dict[str, Any]) -> Any:
         method = self.FUNCTION_METHODS.get(function_name)
         if not method:
@@ -93,13 +105,14 @@ class ConvexReviewStore(ReviewStore):
             raise RuntimeError(
                 f"Thiếu mapping Convex method cho {function_name}. Supported: {supported}"
             )
+        normalized_payload = self._drop_none(payload)
         command = [
             self.node_path,
             str(self.runner_path),
             method,
             function_name,
             self.env_path.name,
-            json.dumps(payload, ensure_ascii=False),
+            json.dumps(normalized_payload, ensure_ascii=False),
         ]
         result = subprocess.run(
             command,
