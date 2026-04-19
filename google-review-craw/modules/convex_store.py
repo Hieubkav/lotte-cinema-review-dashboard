@@ -13,6 +13,16 @@ log = logging.getLogger("scraper")
 
 
 class ConvexReviewStore(ReviewStore):
+    FUNCTION_METHODS = {
+        "places:getByPlaceId": "query",
+        "places:upsert": "mutation",
+        "reviews:paginatedByPlace": "query",
+        "reviews:upsertManyForPlace": "mutation",
+        "crawlJobs:create": "mutation",
+        "crawlJobs:setStatus": "mutation",
+        "crawlJobs:addEvent": "mutation",
+    }
+
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.project_root = Path(__file__).resolve().parents[1]
@@ -77,9 +87,16 @@ class ConvexReviewStore(ReviewStore):
         )
 
     def _run_convex(self, function_name: str, payload: Dict[str, Any]) -> Any:
+        method = self.FUNCTION_METHODS.get(function_name)
+        if not method:
+            supported = ", ".join(sorted(self.FUNCTION_METHODS))
+            raise RuntimeError(
+                f"Thiếu mapping Convex method cho {function_name}. Supported: {supported}"
+            )
         command = [
             self.node_path,
             str(self.runner_path),
+            method,
             function_name,
             self.env_path.name,
             json.dumps(payload, ensure_ascii=False),

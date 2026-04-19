@@ -2,10 +2,10 @@ const path = require("node:path");
 const dotenv = require("dotenv");
 const { ConvexHttpClient } = require("convex/browser");
 
-const [, , functionName, envFileName = ".env.local", argsJson = "{}"] = process.argv;
+const [, , method = "query", functionName, envFileName = ".env.local", argsJson = "{}"] = process.argv;
 
 if (!functionName) {
-  console.error("Usage: node scripts/convex-query.cjs <functionName> [envFileName] [argsJson]");
+  console.error("Usage: node scripts/convex-query.cjs <method> <functionName> [envFileName] [argsJson]");
   process.exit(1);
 }
 
@@ -26,9 +26,16 @@ const client = new ConvexHttpClient(convexUrl);
 
 async function main() {
   const args = JSON.parse(argsJson);
-  const result = functionName.includes(":")
-    ? await client.query(functionName, args)
-    : await client.query(functionName, args);
+  let result;
+  if (method === "query") {
+    result = await client.query(functionName, args);
+  } else if (method === "mutation") {
+    result = await client.mutation(functionName, args);
+  } else if (method === "action") {
+    result = await client.action(functionName, args);
+  } else {
+    throw new Error(`Unsupported Convex method: ${method}`);
+  }
   process.stdout.write(`${JSON.stringify(result ?? null)}\n`);
 }
 
