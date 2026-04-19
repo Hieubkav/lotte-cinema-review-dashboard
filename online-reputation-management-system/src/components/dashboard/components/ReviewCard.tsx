@@ -27,12 +27,39 @@ function formatReviewText(text: string | null): string {
   }
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function renderHighlightedText(text: string, query: string) {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return text;
+
+  const regex = new RegExp(`(${escapeRegExp(normalizedQuery)})`, 'ig');
+  const parts = text.split(regex);
+
+  return parts.map((part, index) =>
+    regex.test(part) ? (
+      <mark
+        key={`${part}-${index}`}
+        className="rounded px-0.5 py-[1px] bg-yellow-300/80 text-black"
+      >
+        {part}
+      </mark>
+    ) : (
+      <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
+    )
+  );
+}
+
 export default function ReviewCard({
   review: r,
   highlightedReviewId,
+  searchQuery = '',
 }: {
   review: any;
   highlightedReviewId: string | null;
+  searchQuery?: string;
 }) {
   const isHighlighted = highlightedReviewId === r.reviewId;
   const rText = formatReviewText(r.text);
@@ -109,7 +136,7 @@ export default function ReviewCard({
         style={{ letterSpacing: '-0.374px' }}
       >
         {rText
-          ? `"${rText}"`
+          ? <>{'"'}{renderHighlightedText(rText, searchQuery)}{'"'}</>
           : <span className="opacity-30 italic text-[14px]">Không có nội dung đánh giá</span>
         }
       </p>

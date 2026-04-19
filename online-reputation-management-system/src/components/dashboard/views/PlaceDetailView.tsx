@@ -181,7 +181,7 @@ export default function PlaceDetailView({
         if (normalized) params.set('q', normalized);
         else params.delete('q');
       });
-    }, 300);
+    }, 500);
 
     return () => window.clearTimeout(timer);
   }, [searchInput, searchQuery, updateFilters]);
@@ -390,7 +390,12 @@ export default function PlaceDetailView({
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {liveReviews.map((review, idx) => (
-                    <ReviewCard key={review._id || review.reviewId || idx} review={review} highlightedReviewId={null} />
+                    <ReviewCard
+                      key={review._id || review.reviewId || idx}
+                      review={review}
+                      highlightedReviewId={null}
+                      searchQuery={searchQuery}
+                    />
                   ))}
                 </div>
               )}
