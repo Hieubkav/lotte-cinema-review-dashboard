@@ -30,6 +30,10 @@ def extract_place_id(original_url: str, resolved_url: str) -> str:
     3. Short link path segment (maps.app.goo.gl/...)
     4. SHA-256 hash of resolved_url as fallback
     """
+    explicit_query_place_id = _extract_query_place_id(resolved_url) or _extract_query_place_id(original_url)
+    if explicit_query_place_id:
+        return explicit_query_place_id
+
     # Try resolved URL first, then original
     for url in (resolved_url, original_url):
         if not url:
@@ -62,6 +66,16 @@ def _extract_cid(url: str) -> str:
     cid_values = params.get("cid", [])
     if cid_values and cid_values[0].strip():
         return cid_values[0].strip()
+    return ""
+
+
+def _extract_query_place_id(url: str) -> str:
+    """Extract explicit query_place_id from official Google Maps search URLs."""
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    place_id_values = params.get("query_place_id", [])
+    if place_id_values and place_id_values[0].strip():
+        return place_id_values[0].strip()
     return ""
 
 

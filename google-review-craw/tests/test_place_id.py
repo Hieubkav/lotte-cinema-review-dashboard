@@ -24,6 +24,13 @@ class TestExtractPlaceId:
         )
         assert result == "cid:12345678"
 
+    def test_query_place_id_takes_priority(self):
+        result = extract_place_id(
+            "https://www.google.com/maps/search/?api=1&query=Test&query_place_id=0x31356d9c4a64e8b7:0",
+            "https://www.google.com/maps/place/Test/@21.1,105.1,17z"
+        )
+        assert result == "0x31356d9c4a64e8b7:0"
+
     def test_hex_place_id(self):
         url = "https://www.google.com/maps/place/Thai+Tours/@13.7,100.5,17z/data=!4m8!3m7!1s0x80dcb8f3015f:0x123abc"
         result = extract_place_id(url, url)

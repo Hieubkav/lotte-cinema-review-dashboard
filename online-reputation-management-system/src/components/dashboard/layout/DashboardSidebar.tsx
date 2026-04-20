@@ -1,13 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Globe, Search, X, LayoutDashboard, TrendingUp, Building2, DownloadCloud, Activity, ArrowUpDown } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Globe, Search, X, LayoutDashboard, TrendingUp, Building2, DownloadCloud, Activity, ArrowUpDown, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { convexMutation } from '@/lib/convex';
 import { getTags } from '../utils';
 import { DashboardState } from '../hooks/useDashboardData';
 
 export default function DashboardSidebar({ state }: { state: DashboardState }) {
   const pathname = usePathname();
+  const router = useRouter();
   const {
     viewMode, setViewMode,
     cinemaSearchQuery, setCinemaSearchQuery,
@@ -16,6 +18,8 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
     cinemasWithLatest,
     isMobileSidebarOpen, setIsMobileSidebarOpen
   } = state;
+  const [deletingPlaceId, setDeletingPlaceId] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new();
@@ -53,6 +57,48 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
   };
 
   const sortLabel = sidebarSort === 'name' ? 'A–Z' : sidebarSort === 'rating-desc' ? '★ Cao' : '★ Thấp';
+
+  const handleDeleteBranch = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    cinema: DashboardState['filteredCinemas'][number]
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (deletingPlaceId) return;
+
+    const branchName = cinema.place_name || cinema.name || 'Chi nhánh không tên';
+    const googleReviews = Number(cinema.currentTotalReviews || 0).toLocaleString('vi-VN');
+    const capturedReviews = Number(cinema.capturedReviews || 0).toLocaleString('vi-VN');
+    const confirmed = window.confirm(
+      [
+        `Xóa chi nhánh "${branchName}" khỏi hệ thống?`,
+        '',
+        `Google official: ${googleReviews} đánh giá`,
+        `Đã capture trong DB: ${capturedReviews} đánh giá`,
+        `Place ID: ${cinema.place_id}`,
+        '',
+        'Thao tác này sẽ xóa chi nhánh và toàn bộ dữ liệu liên quan, không thể hoàn tác tự động.',
+      ].join('\n')
+    );
+
+    if (!confirmed) return;
+
+    setDeletingPlaceId(cinema.place_id);
+    setDeleteError(null);
+
+    try {
+      await convexMutation('places:removeBranch', { placeId: cinema.place_id });
+      if (pathname === `/${cinema.slug}`) {
+        router.push('/');
+      }
+      router.refresh();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Xóa chi nhánh thất bại');
+    } finally {
+      setDeletingPlaceId(null);
+    }
+  };
 
   return (
     <>
@@ -161,17 +207,23 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
             )}
           </div>
 
+          {deleteError && (
+            <p className="px-3 pb-3 text-[12px] text-[#ff6b61]">
+              {deleteError}
+            </p>
+          )}
+
           {/* List */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
             <div className="flex flex-col gap-0.5">
               {filteredCinemas.map((c) => {
                 const isActive = pathname === `/${c.slug}`;
                 const shortName = (c.place_name || '').replace(/LOTTE Cinema\s*/gi, '').trim() || c.name || 'Unknown';
+                const isDeleting = deletingPlaceId === c.place_id;
+                const hasData = Number(c.currentTotalReviews || 0) > 0 || Number(c.capturedReviews || 0) > 0 || Boolean(c.lastScraped);
                 return (
-                  <Link
-                    href={`/${c.slug}`}
+                  <div
                     key={c.place_id}
-                    onClick={() => { setViewMode('branch'); setIsMobileSidebarOpen(false); }}
                     className={`
                       group w-full flex items-center justify-between px-3 py-2 rounded-[8px] text-left transition-all
                       ${isActive
@@ -180,28 +232,58 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
                       }
                     `}
                   >
-                    <div className="flex items-center gap-2.5 overflow-hidden">
-                      <Building2 className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-[#0071e3]' : 'text-tertiary group-hover:text-secondary'}`} />
-                      <span
-                        className="text-[13px] font-medium truncate"
-                        style={{ letterSpacing: '-0.12px' }}
-                      >
-                        {shortName}
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-end gap-0 flex-shrink-0 ml-2">
-                      {c.currentAverageRating > 0 && (
-                        <span className={`text-[11px] font-bold tabular-nums leading-tight ${isActive ? 'text-[#0071e3]' : 'text-amber-500'}`}>
-                          {c.currentAverageRating.toFixed(1)}
+                    <Link
+                      href={`/${c.slug}`}
+                      onClick={() => { setViewMode('branch'); setIsMobileSidebarOpen(false); }}
+                      className="min-w-0 flex flex-1 items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+                        <Building2 className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-[#0071e3]' : 'text-tertiary group-hover:text-secondary'}`} />
+                        <span
+                          className="text-[13px] font-medium truncate"
+                          style={{ letterSpacing: '-0.12px' }}
+                        >
+                          {shortName}
                         </span>
-                      )}
-                      {c.currentTotalReviews > 0 && (
+                      </div>
+                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-2">
+                        {c.currentAverageRating > 0 && (
+                          <span className={`text-[11px] font-bold tabular-nums leading-tight ${isActive ? 'text-[#0071e3]' : 'text-amber-500'}`}>
+                            {c.currentAverageRating.toFixed(1)}
+                          </span>
+                        )}
                         <span className="text-[10px] text-tertiary tabular-nums leading-tight">
-                          {c.currentTotalReviews.toLocaleString()}
+                          {Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')}
                         </span>
-                      )}
-                    </div>
-                  </Link>
+                        <span className="text-[9px] text-tertiary/75 tabular-nums leading-tight">
+                          G {Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} / DB {Number(c.capturedReviews || 0).toLocaleString('vi-VN')}
+                        </span>
+                        {!hasData && (
+                          <span className="text-[10px] text-tertiary/80 leading-tight">
+                            Chưa cào
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(event) => void handleDeleteBranch(event, c)}
+                      disabled={Boolean(deletingPlaceId)}
+                      className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-[#ff6b61] opacity-100 transition-all hover:bg-[#ff453a]/10 hover:text-[#ff8a80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff453a]/40 disabled:cursor-not-allowed disabled:opacity-40"
+                      title={
+                        isDeleting
+                          ? `Đang xóa ${shortName}...`
+                          : `Xóa ${shortName} (${Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} Google / ${Number(c.capturedReviews || 0).toLocaleString('vi-VN')} DB)`
+                      }
+                      aria-label={
+                        isDeleting
+                          ? `Đang xóa ${shortName}`
+                          : `Xóa ${shortName}, hiện có ${Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} đánh giá Google và ${Number(c.capturedReviews || 0).toLocaleString('vi-VN')} đánh giá đã capture`
+                      }
+                    >
+                      <Trash2 className={`h-3.5 w-3.5 ${isDeleting ? 'animate-pulse' : ''}`} />
+                    </button>
+                  </div>
                 );
               })}
             </div>

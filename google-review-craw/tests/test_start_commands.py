@@ -202,8 +202,6 @@ class TestInteractiveBusinessSelection:
             selected = _prompt_sync_businesses(businesses)
 
         assert selected == [businesses[1]]
-
-
 class TestConvexSyncHelpers:
     def test_build_metrics_payload(self):
         from start import _build_metrics_payload
