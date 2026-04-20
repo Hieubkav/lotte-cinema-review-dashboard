@@ -2,10 +2,107 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Globe, Search, X, LayoutDashboard, TrendingUp, Building2, DownloadCloud, Activity, ArrowUpDown, Trash2 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { convexMutation } from '@/lib/convex';
 import { getTags } from '../utils';
 import { DashboardState } from '../hooks/useDashboardData';
+
+const EXCEL_HEADER_FILL = 'FF0F172A';
+const EXCEL_HEADER_FONT = 'FFFFFFFF';
+const EXCEL_BORDER = 'FF334155';
+const EXCEL_RATING_HIGH_FILL = 'FFDCFCE7';
+const EXCEL_RATING_HIGH_FONT = 'FF166534';
+const EXCEL_RATING_MID_FILL = 'FFFEF3C7';
+const EXCEL_RATING_MID_FONT = 'FF92400E';
+const EXCEL_RATING_LOW_FILL = 'FFFEE2E2';
+const EXCEL_RATING_LOW_FONT = 'FFB91C1C';
+const EXCEL_SHEET_NAME_MAX_LENGTH = 31;
+
+function sanitizeSheetName(name?: string) {
+  const sanitized = (name || 'Unknown')
+    .replace(/[:\\\/\?\*\[\]]/g, '')
+    .trim();
+
+  return (sanitized || 'Unknown').substring(0, EXCEL_SHEET_NAME_MAX_LENGTH);
+}
+
+function buildUniqueSheetName(baseName: string, usedSheetNames: Set<string>) {
+  const normalizedBaseName = sanitizeSheetName(baseName);
+
+  if (!usedSheetNames.has(normalizedBaseName)) {
+    usedSheetNames.add(normalizedBaseName);
+    return normalizedBaseName;
+  }
+
+  let suffix = 2;
+
+  while (suffix < 1000) {
+    const suffixText = `_${suffix}`;
+    const truncatedBaseName = normalizedBaseName.substring(
+      0,
+      EXCEL_SHEET_NAME_MAX_LENGTH - suffixText.length
+    ) || 'Unknown';
+    const candidate = `${truncatedBaseName}${suffixText}`;
+
+    if (!usedSheetNames.has(candidate)) {
+      usedSheetNames.add(candidate);
+      return candidate;
+    }
+
+    suffix += 1;
+  }
+
+  const fallbackName = `Sheet_${Date.now()}`.substring(0, EXCEL_SHEET_NAME_MAX_LENGTH);
+  usedSheetNames.add(fallbackName);
+  return fallbackName;
+}
+
+function applyHeaderStyle(row: ExcelJS.Row) {
+  row.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: EXCEL_HEADER_FONT } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: EXCEL_HEADER_FILL },
+    };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.border = {
+      top: { style: 'thin', color: { argb: EXCEL_BORDER } },
+      left: { style: 'thin', color: { argb: EXCEL_BORDER } },
+      bottom: { style: 'thin', color: { argb: EXCEL_BORDER } },
+      right: { style: 'thin', color: { argb: EXCEL_BORDER } },
+    };
+  });
+}
+
+function applyRatingStyle(cell: ExcelJS.Cell, rating: number) {
+  if (rating >= 4) {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: EXCEL_RATING_HIGH_FILL },
+    };
+    cell.font = { color: { argb: EXCEL_RATING_HIGH_FONT }, bold: true };
+    return;
+  }
+
+  if (rating < 3) {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: EXCEL_RATING_LOW_FILL },
+    };
+    cell.font = { color: { argb: EXCEL_RATING_LOW_FONT }, bold: true };
+    return;
+  }
+
+  cell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: EXCEL_RATING_MID_FILL },
+  };
+  cell.font = { color: { argb: EXCEL_RATING_MID_FONT }, bold: true };
+}
 
 export default function DashboardSidebar({ state }: { state: DashboardState }) {
   const pathname = usePathname();
@@ -21,35 +118,85 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
   const [deletingPlaceId, setDeletingPlaceId] = React.useState<string | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
-  const exportToExcel = () => {
-    const wb = XLSX.utils.book_new();
+  const exportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const usedSheetNames = new Set<string>();
+    const overviewSheet = workbook.addWorksheet('OVERVIEW');
 
-    const overviewData = cinemasWithLatest.map(c => ({
-      "Cinema Name": c.place_name,
-      "New Google Reviews": c.currentTotalReviews,
-      "Average Rating": c.currentAverageRating.toFixed(2),
-    }));
-    const wsOverview = XLSX.utils.json_to_sheet(overviewData);
-    XLSX.utils.book_append_sheet(wb, wsOverview, "OVERVIEW");
+    usedSheetNames.add('OVERVIEW');
 
-    cinemasWithLatest.forEach(c => {
-      const cinemaReviews = c.reviews.map((r: any) => ({
-        "Date": r.date,
-        "Author": r.authorName,
-        "Rating": r.rating,
-        "Review": r.text,
-        "Translated": r.translated || "",
-        "Tags": getTags(r.text).join(", "),
-        "Local Guide": r.localGuide ? "Yes" : "No",
-        "Likes": r.likes || 0
-      }));
-      cinemaReviews.sort((a: any, b: any) => b.Rating - a.Rating);
-      const wsCinema = XLSX.utils.json_to_sheet(cinemaReviews);
-      const safeName = (c.place_name || 'Unknown').replace(/[\[\]\*\?\/\\]/g, "").substring(0, 31);
-      XLSX.utils.book_append_sheet(wb, wsCinema, safeName);
+    overviewSheet.columns = [
+      { header: 'Cinema Name', key: 'cinemaName', width: 36 },
+      { header: 'New Google Reviews', key: 'reviewCount', width: 20 },
+      { header: 'Average Rating', key: 'averageRating', width: 18 },
+    ];
+
+    applyHeaderStyle(overviewSheet.getRow(1));
+    overviewSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    cinemasWithLatest.forEach((cinema) => {
+      const overviewRow = overviewSheet.addRow({
+        cinemaName: cinema.place_name || 'Unknown',
+        reviewCount: Number(cinema.currentTotalReviews || 0),
+        averageRating: Number(cinema.currentAverageRating || 0),
+      });
+      const ratingCell = overviewRow.getCell(3);
+      ratingCell.numFmt = '0.00';
+      applyRatingStyle(ratingCell, Number(cinema.currentAverageRating || 0));
     });
 
-    XLSX.writeFile(wb, `ORMS_Audit_${new Date().toISOString().split('T')[0]}.xlsx`);
+    cinemasWithLatest.forEach((cinema) => {
+      const worksheet = workbook.addWorksheet(
+        buildUniqueSheetName(cinema.place_name || 'Unknown', usedSheetNames)
+      );
+
+      worksheet.columns = [
+        { header: 'Date', key: 'date', width: 18 },
+        { header: 'Author', key: 'author', width: 24 },
+        { header: 'Rating', key: 'rating', width: 12 },
+        { header: 'Review', key: 'review', width: 60 },
+        { header: 'Translated', key: 'translated', width: 60 },
+        { header: 'Tags', key: 'tags', width: 28 },
+        { header: 'Local Guide', key: 'localGuide', width: 14 },
+        { header: 'Likes', key: 'likes', width: 12 },
+      ];
+
+      applyHeaderStyle(worksheet.getRow(1));
+      worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+      const cinemaReviews = [...cinema.reviews]
+        .map((review: any) => ({
+          date: review.date || '',
+          author: review.authorName || '',
+          rating: Number(review.rating || 0),
+          review: review.text || '',
+          translated: review.translated || '',
+          tags: getTags(review.text || '').join(', '),
+          localGuide: review.localGuide ? 'Yes' : 'No',
+          likes: Number(review.likes || 0),
+        }))
+        .sort((a, b) => b.rating - a.rating);
+
+      cinemaReviews.forEach((review) => {
+        const reviewRow = worksheet.addRow(review);
+        const ratingCell = reviewRow.getCell(3);
+        applyRatingStyle(ratingCell, review.rating);
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob(
+      [buffer instanceof ArrayBuffer ? buffer : new Uint8Array(buffer)],
+      {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ORMS_Audit_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const cycleSidebarSort = () => {
