@@ -20,6 +20,7 @@ export default async function Dashboard() {
       slug: buildPlaceSlug(p.name),
       place_name: p.name,
       name: p.name,
+      sentimentScore: latestMetrics.find((m: any) => m.placeId === p.placeId)?.metric?.sentimentScore ?? 0,
       total_reviews: p.officialTotalReviews ?? 0,
       avg_rating: p.officialAvgRating ?? 0,
       captured_total_reviews: p.capturedTotalReviews ?? 0,
