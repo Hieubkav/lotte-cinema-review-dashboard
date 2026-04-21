@@ -30,7 +30,6 @@ export function useDashboardData(
   const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false);
   const [historicalMetrics, setHistoricalMetrics] = useState<any[]>([]);
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
-  const [officialStatsMap, setOfficialStatsMap] = useState<Record<string, { avgRating: number, totalReviews: number, capturedReviews: number, lastSyncStatus?: string | null, lastSyncError?: string | null }>>({});
 
   // -- Debounced States for Search Optimization --
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -49,32 +48,6 @@ export function useDashboardData(
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-    const fetchOfficialStats = async () => {
-      try {
-        const res = await fetch('/api/places/official');
-        const data = await res.json();
-        if (data.data) {
-          const map: Record<string, { avgRating: number, totalReviews: number, capturedReviews: number, lastSyncStatus?: string | null, lastSyncError?: string | null }> = {};
-          data.data.forEach((p: any) => {
-            map[p.placeId] = { 
-              avgRating: p.avgRating, 
-              totalReviews: p.totalReviews,
-              capturedReviews: p.capturedReviews,
-              lastSyncStatus: p.lastSyncStatus,
-              lastSyncError: p.lastSyncError,
-            };
-          });
-          setOfficialStatsMap(map);
-        }
-      } catch (err) {
-        console.error('Failed to load official stats:', err);
-      }
-    };
-    fetchOfficialStats();
-  }, [mounted, isSyncing]);
 
   // Create lookups for faster compute
   const aggregateMap = useMemo(() => {
@@ -98,9 +71,9 @@ export function useDashboardData(
       const pid = c.place_id || c.placeId || '';
       const agg = aggregateMap[pid];
 
-      const currentTotalReviews = officialStatsMap[pid]?.totalReviews ?? agg?.count ?? 0;
-      const currentAverageRating = officialStatsMap[pid]?.avgRating ?? agg?.rating ?? 0;
-      const capturedReviews = officialStatsMap[pid]?.capturedReviews ?? c.reviews?.length ?? 0;
+      const currentTotalReviews = c.officialTotalReviews ?? c.total_reviews ?? agg?.count ?? 0;
+      const currentAverageRating = c.officialAvgRating ?? c.avg_rating ?? agg?.rating ?? 0;
+      const capturedReviews = c.capturedTotalReviews ?? c.captured_total_reviews ?? c.reviews?.length ?? 0;
 
       return {
         ...c,
@@ -108,15 +81,15 @@ export function useDashboardData(
         currentTotalReviews,
         currentAverageRating,
         capturedReviews,
-        lastSyncStatus: officialStatsMap[pid]?.lastSyncStatus ?? c.lastSyncStatus ?? null,
-        lastSyncError: officialStatsMap[pid]?.lastSyncError ?? c.lastSyncError ?? null,
+        lastSyncStatus: c.lastSyncStatus ?? null,
+        lastSyncError: c.lastSyncError ?? null,
         sentimentScore: agg?.sentiment ?? 0,
         feedbackDensity: agg?.density ?? 0,
         starDistribution: agg?.distribution ?? null,
         reviews: (c.reviews || []).map((r: any) => ({ ...r, tags: getTags(r.text) }))
       };
     });
-  }, [cinemas, aggregateMap, officialStatsMap]);
+  }, [cinemas, aggregateMap]);
 
   const filteredCinemas = useMemo(() => {
     let result = cinemasWithLatest.filter(c =>
@@ -178,7 +151,7 @@ export function useDashboardData(
       return safeParseDate(b.isoDate) - safeParseDate(a.isoDate);
     }).slice(0, 50);
 
-    // Calculate dynamic global stats based on officialStatsMap (if available) or server fallback
+    // Calculate dynamic global stats from Convex snapshot payload
     const totalGoogleReviews = cinemasWithLatest.reduce((acc, c: any) => acc + (c.currentTotalReviews || 0), 0);
     const totalCapturedReviews = cinemasWithLatest.reduce((acc, c: any) => acc + (c.capturedReviews || 0), 0);
     const weightedSum = cinemasWithLatest.reduce((acc, c: any) => acc + ((c.currentAverageRating || 0) * (c.currentTotalReviews || 0)), 0);
