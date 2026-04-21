@@ -69,7 +69,8 @@ export function useDashboardData(
       return cinema.sentimentScore;
     }
 
-    if (typeof aggregateMap[cinema.place_id || cinema.placeId || '']?.sentiment === 'number') {
+    if (typeof aggregateMap[cinema.place_id || cinema.placeId || '']?.sentiment === 'number'
+      && aggregateMap[cinema.place_id || cinema.placeId || '']?.sentiment > 0) {
       return aggregateMap[cinema.place_id || cinema.placeId || '']?.sentiment ?? 0;
     }
 
