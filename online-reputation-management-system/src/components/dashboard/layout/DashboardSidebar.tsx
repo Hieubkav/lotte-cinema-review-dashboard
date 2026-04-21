@@ -146,6 +146,11 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
     const workbook = new ExcelJS.Workbook();
     const usedSheetNames = new Set<string>();
     const overviewSheet = workbook.addWorksheet('OVERVIEW');
+    const overviewRows = [...cinemasWithLatest].sort((a, b) => {
+      const left = (a.place_name || a.name || 'Unknown').toLocaleLowerCase('vi-VN');
+      const right = (b.place_name || b.name || 'Unknown').toLocaleLowerCase('vi-VN');
+      return left.localeCompare(right, 'vi-VN');
+    });
 
     usedSheetNames.add('OVERVIEW');
 
@@ -158,7 +163,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
     applyHeaderStyle(overviewSheet.getRow(1));
     overviewSheet.views = [{ state: 'frozen', ySplit: 1 }];
 
-    cinemasWithLatest.forEach((cinema) => {
+    overviewRows.forEach((cinema) => {
       const overviewRow = overviewSheet.addRow({
         cinemaName: cinema.place_name || 'Unknown',
         reviewCount: Number(cinema.currentTotalReviews || 0),
