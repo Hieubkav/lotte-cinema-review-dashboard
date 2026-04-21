@@ -65,6 +65,10 @@ export function useDashboardData(
   }, [branchAggregates]);
 
   const getCapturedAverageRating = (cinema: any) => {
+    if (typeof cinema.capturedAvgRating === 'number' && cinema.capturedAvgRating > 0) {
+      return cinema.capturedAvgRating;
+    }
+
     if (typeof cinema.sentimentScore === 'number' && cinema.sentimentScore > 0) {
       return cinema.sentimentScore;
     }
@@ -88,7 +92,7 @@ export function useDashboardData(
       const pid = c.place_id || c.placeId || '';
       const agg = aggregateMap[pid];
 
-      const currentTotalReviews = c.capturedTotalReviews ?? c.captured_total_reviews ?? c.reviews?.length ?? agg?.count ?? 0;
+      const currentTotalReviews = c.captured_total_reviews ?? c.capturedTotalReviews ?? c.reviews?.length ?? agg?.count ?? 0;
       const currentAverageRating = getCapturedAverageRating(c);
       const capturedReviews = c.capturedTotalReviews ?? c.captured_total_reviews ?? c.reviews?.length ?? 0;
 

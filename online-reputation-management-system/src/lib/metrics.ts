@@ -17,6 +17,10 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 
 export async function runMetricsAggregation(onProgress?: (p: SyncProgress) => void) {
   const branches = await convexQuery<any[]>('places:list', {});
+  const reviewSummaries = await convexQuery<Record<string, { capturedTotalReviews: number; capturedAvgRating: number }>>(
+    'reviews:summariesByPlaces',
+    { placeIds: branches.map((branch) => branch.placeId).filter(Boolean) }
+  );
 
   if (branches.length === 0) {
     return;
@@ -38,12 +42,13 @@ export async function runMetricsAggregation(onProgress?: (p: SyncProgress) => vo
           const reviewResult = await convexQuery<any>('reviews:paginatedByPlace', {
             placeId: pid,
             page: 1,
-            limit: 500,
+            limit: 200,
           });
 
           const reviews = reviewResult.reviews || [];
-          const officialAvgRating = branch.officialAvgRating ?? 0;
-          const officialTotalReviews = branch.officialTotalReviews ?? 0;
+          const capturedSummary = reviewSummaries?.[pid];
+          const officialAvgRating = capturedSummary?.capturedAvgRating ?? branch.officialAvgRating ?? 0;
+          const officialTotalReviews = capturedSummary?.capturedTotalReviews ?? branch.capturedTotalReviews ?? 0;
 
           const stars = { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 };
           let ratingSum = 0;
@@ -71,7 +76,7 @@ export async function runMetricsAggregation(onProgress?: (p: SyncProgress) => vo
             placeId: pid,
             avgRating: officialAvgRating,
             totalReviews: officialTotalReviews,
-            capturedReviews: branch.capturedTotalReviews ?? capturedTotal,
+            capturedReviews: capturedSummary?.capturedTotalReviews ?? branch.capturedTotalReviews ?? capturedTotal,
             sentimentScore: Number(sentimentScore.toFixed(2)),
             density30d: Number(density.toFixed(3)),
             reviewsLast30d: recent30d,

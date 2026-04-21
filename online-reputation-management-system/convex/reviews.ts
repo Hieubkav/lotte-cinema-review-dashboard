@@ -137,6 +137,46 @@ export const summaryByPlace = queryGeneric({
   },
 });
 
+export const summariesByPlaces = queryGeneric({
+  args: { placeIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const summaries: Record<string, {
+      capturedTotalReviews: number;
+      capturedAvgRating: number;
+      starDistribution: { star1: number; star2: number; star3: number; star4: number; star5: number };
+    }> = {};
+
+    for (const placeId of args.placeIds) {
+      const rows = await ctx.db
+        .query("reviews")
+        .withIndex("by_placeId", (q: any) => q.eq("placeId", placeId))
+        .collect();
+
+      const capturedTotalReviews = rows.length;
+      const totalRating = rows.reduce((sum: number, review: any) => sum + Number(review.rating ?? 0), 0);
+      const capturedAvgRating = capturedTotalReviews > 0 ? Number((totalRating / capturedTotalReviews).toFixed(2)) : 0;
+
+      const starDistribution = { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 };
+      for (const review of rows as any[]) {
+        const rating = Number(review.rating ?? 0);
+        if (rating === 1) starDistribution.star1 += 1;
+        if (rating === 2) starDistribution.star2 += 1;
+        if (rating === 3) starDistribution.star3 += 1;
+        if (rating === 4) starDistribution.star4 += 1;
+        if (rating === 5) starDistribution.star5 += 1;
+      }
+
+      summaries[placeId] = {
+        capturedTotalReviews,
+        capturedAvgRating,
+        starDistribution,
+      };
+    }
+
+    return summaries;
+  },
+});
+
 export const upsertManyForPlace = mutationGeneric({
   args: {
     placeId: v.string(),

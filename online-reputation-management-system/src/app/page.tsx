@@ -13,6 +13,10 @@ export default async function Dashboard() {
     const snapshot = await convexQuery<any>('dashboard:snapshot', {});
     const places = snapshot?.places || [];
     const latestMetrics = snapshot?.latestMetrics || [];
+    const reviewSummaries = await convexQuery<Record<string, { capturedTotalReviews: number; capturedAvgRating: number }>>(
+      'reviews:summariesByPlaces',
+      { placeIds: places.map((p: any) => p.placeId).filter(Boolean) }
+    );
 
     cinemas = places.map((p: any) => ({
       ...p,
@@ -21,9 +25,10 @@ export default async function Dashboard() {
       place_name: p.name,
       name: p.name,
       sentimentScore: latestMetrics.find((m: any) => m.placeId === p.placeId)?.metric?.sentimentScore ?? 0,
+      capturedAvgRating: reviewSummaries?.[p.placeId]?.capturedAvgRating ?? 0,
       total_reviews: p.officialTotalReviews ?? 0,
       avg_rating: p.officialAvgRating ?? 0,
-      captured_total_reviews: p.capturedTotalReviews ?? 0,
+      captured_total_reviews: reviewSummaries?.[p.placeId]?.capturedTotalReviews ?? p.capturedTotalReviews ?? 0,
       reviews: (p.reviews || []).map((r: any) => ({
         _id: r._id,
         reviewId: r.reviewId,
