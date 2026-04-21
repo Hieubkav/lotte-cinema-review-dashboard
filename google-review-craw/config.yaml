@@ -225,7 +225,6 @@ businesses:
       placeId: "0x3173f6532eab2e91:0"
       company: "Lotte Cinema Vincom Bảo Lộc"
       source: "official-api"
-      # 
   - url: "https://www.google.com/maps/search/?api=1&query=Lotte%20Cinema%20B%C3%ACnh%20D%C6%B0%C6%A1ng&query_place_id=0x3174d791d7a2fd5d:0"
     custom_params:
       placeId: "0x3174d791d7a2fd5d:0"
