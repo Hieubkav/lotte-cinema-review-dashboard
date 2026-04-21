@@ -51,8 +51,8 @@ export const listDuplicateSlugGroups = queryGeneric({
         rows: rows
           .slice()
           .sort((a, b) =>
-            (Number(b.officialTotalReviews || 0) - Number(a.officialTotalReviews || 0)) ||
-            String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""))
+            String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")) ||
+            (Number(b.officialTotalReviews || 0) - Number(a.officialTotalReviews || 0))
           )
           .map((row) => ({
             _id: row._id,
@@ -140,8 +140,8 @@ export const migrateDuplicateSlugGroup = mutationGeneric({
     const rows = (places as any[])
       .filter((place) => slugifyPlaceName(place.name || "") === args.slug)
       .sort((a, b) =>
-        (Number(b.officialTotalReviews || 0) - Number(a.officialTotalReviews || 0)) ||
-        String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""))
+        String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")) ||
+        (Number(b.officialTotalReviews || 0) - Number(a.officialTotalReviews || 0))
       );
 
     if (rows.length === 0) {

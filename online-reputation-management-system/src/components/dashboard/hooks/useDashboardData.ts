@@ -130,6 +130,18 @@ export function useDashboardData(
     return result;
   }, [cinemasWithLatest, debouncedCinemaSearchQuery, sidebarSort]);
 
+  const sidebarSnapshotDate = useMemo(() => {
+    const candidates = cinemasWithLatest
+      .map((cinema) => cinema.lastScrapedAt || cinema.lastScraped || cinema.updatedAt || cinema.createdAt)
+      .filter(Boolean)
+      .map((value) => new Date(value as string))
+      .filter((date) => !Number.isNaN(date.getTime()));
+
+    if (candidates.length === 0) return null;
+
+    return candidates.sort((a, b) => b.getTime() - a.getTime())[0].toISOString();
+  }, [cinemasWithLatest]);
+
   // --- Compute Global Data ---
   const globalData = useMemo(() => {
     const branchRatings: { name: string, rating: number, count: number, placeId: string }[] = [];
@@ -319,6 +331,7 @@ export function useDashboardData(
     debouncedCinemaSearchQuery,
     cinemasWithLatest,
     filteredCinemas,
+    sidebarSnapshotDate,
     globalData,
     activeCinema,
     filteredReviews,

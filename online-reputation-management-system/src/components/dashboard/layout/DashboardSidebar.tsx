@@ -1,9 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Globe, Search, X, LayoutDashboard, TrendingUp, Building2, DownloadCloud, Activity, ArrowUpDown, Trash2 } from 'lucide-react';
+import { Globe, Search, X, Building2, DownloadCloud, Activity, ArrowUpDown, Trash2, Layers3 } from 'lucide-react';
 import ExcelJS from 'exceljs';
-import { convexMutation } from '@/lib/convex';
+import { convexAction, convexMutation } from '@/lib/convex';
 import { getTags } from '../utils';
 import { DashboardState } from '../hooks/useDashboardData';
 
@@ -104,6 +104,27 @@ function applyRatingStyle(cell: ExcelJS.Cell, rating: number) {
   cell.font = { color: { argb: EXCEL_RATING_MID_FONT }, bold: true };
 }
 
+function formatSidebarDate(value?: string | null, withTime: boolean = false) {
+  if (!value) return '--';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+
+  return date.toLocaleString('vi-VN', withTime
+    ? {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }
+    : {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+}
+
 export default function DashboardSidebar({ state }: { state: DashboardState }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -113,10 +134,13 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
     sidebarSort, setSidebarSort,
     filteredCinemas,
     cinemasWithLatest,
+    sidebarSnapshotDate,
     isMobileSidebarOpen, setIsMobileSidebarOpen
   } = state;
   const [deletingPlaceId, setDeletingPlaceId] = React.useState<string | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [isDeduping, setIsDeduping] = React.useState(false);
+  const [dedupeError, setDedupeError] = React.useState<string | null>(null);
 
   const exportToExcel = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -247,6 +271,58 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
     }
   };
 
+  const handleBulkDedupe = async () => {
+    if (isDeduping || deletingPlaceId) return;
+
+    setIsDeduping(true);
+    setDedupeError(null);
+
+    try {
+      const preview = await convexAction<{
+        duplicateGroups: Array<{ slug: string; count: number; rows?: Array<{ name?: string; placeId?: string }> }>;
+        report: Array<{ slug: string; count: number; placeIds: string[] }>;
+      }>('places:migrateToCanonicalSlugs', { apply: false });
+
+      const duplicateGroups = preview?.duplicateGroups || [];
+
+      if (duplicateGroups.length === 0) {
+        window.alert('Không có chi nhánh trùng theo company để dọn.');
+        return;
+      }
+
+      const summaryLines = duplicateGroups.slice(0, 8).map((group) => {
+        const sampleName = group.rows?.[0]?.name || group.slug;
+        return `- ${sampleName}: ${group.count} bản ghi`;
+      });
+
+      const hiddenCount = duplicateGroups.length - summaryLines.length;
+      const confirmed = window.confirm(
+        [
+          `Phát hiện ${duplicateGroups.length} nhóm company trùng.`,
+          '',
+          ...summaryLines,
+          hiddenCount > 0 ? `- Và ${hiddenCount} nhóm khác` : '',
+          '',
+          'Hệ thống sẽ giữ bản mới nhất và xóa bản cũ.',
+          'Tiếp tục dọn trùng?'
+        ].filter(Boolean).join('\n')
+      );
+
+      if (!confirmed) return;
+
+      await convexAction('places:migrateToCanonicalSlugs', { apply: true });
+
+      if (pathname !== '/') {
+        router.push('/');
+      }
+      router.refresh();
+    } catch (error) {
+      setDedupeError(error instanceof Error ? error.message : 'Dọn trùng thất bại');
+    } finally {
+      setIsDeduping(false);
+    }
+  };
+
   return (
     <>
       {/* Mobile overlay */}
@@ -258,7 +334,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
       {/* Sidebar */}
       <aside
         className={`
-          w-72 h-screen fixed lg:sticky top-0 left-0 z-50
+          w-80 h-screen fixed lg:sticky top-0 left-0 z-50
           flex flex-col
           sidebar-glass
           transition-transform duration-300 lg:translate-x-0
@@ -360,6 +436,12 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
             </p>
           )}
 
+          {dedupeError && (
+            <p className="px-3 pb-3 text-[12px] text-[#ff6b61]">
+              {dedupeError}
+            </p>
+          )}
+
           {/* List */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
             <div className="flex flex-col gap-0.5">
@@ -367,7 +449,8 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
                 const isActive = pathname === `/${c.slug}`;
                 const shortName = (c.place_name || '').replace(/LOTTE Cinema\s*/gi, '').trim() || c.name || 'Unknown';
                 const isDeleting = deletingPlaceId === c.place_id;
-                const hasData = Number(c.currentTotalReviews || 0) > 0 || Number(c.capturedReviews || 0) > 0 || Boolean(c.lastScraped);
+                const crawlDate = c.lastScrapedAt || c.lastScraped || null;
+                const hasData = Number(c.currentTotalReviews || 0) > 0 || Number(c.capturedReviews || 0) > 0 || Boolean(crawlDate);
                 return (
                   <div
                     key={c.place_id}
@@ -382,18 +465,28 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
                     <Link
                       href={`/${c.slug}`}
                       onClick={() => { setViewMode('branch'); setIsMobileSidebarOpen(false); }}
-                      className="min-w-0 flex flex-1 items-center justify-between gap-2"
+                      className="min-w-0 flex flex-1 items-start justify-between gap-3"
                     >
-                      <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
-                        <Building2 className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-[#0071e3]' : 'text-tertiary group-hover:text-secondary'}`} />
-                        <span
-                          className="text-[13px] font-medium truncate"
-                          style={{ letterSpacing: '-0.12px' }}
-                        >
-                          {shortName}
-                        </span>
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <Building2 className={`mt-0.5 w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-[#0071e3]' : 'text-tertiary group-hover:text-secondary'}`} />
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className="block text-[13px] font-medium leading-[1.25] whitespace-normal break-words"
+                            style={{ letterSpacing: '-0.12px' }}
+                          >
+                            {shortName}
+                          </span>
+                          <div className="mt-1 space-y-0.5">
+                            <p className="text-[9px] text-tertiary/80 leading-tight">
+                              Crawl {formatSidebarDate(crawlDate, true)}
+                            </p>
+                            <p className="text-[9px] text-tertiary/75 leading-tight">
+                              Đợt {formatSidebarDate(sidebarSnapshotDate)}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-2">
+                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-1 pt-0.5">
                         {c.currentAverageRating > 0 && (
                           <span className={`text-[11px] font-bold tabular-nums leading-tight ${isActive ? 'text-[#0071e3]' : 'text-amber-500'}`}>
                             {c.currentAverageRating.toFixed(1)}
@@ -438,7 +531,16 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
         </div>
 
         {/* Footer */}
-        <div className="px-3 py-4 border-t border-[var(--border-color)]">
+        <div className="px-3 py-4 border-t border-[var(--border-color)] space-y-2">
+          <button
+            onClick={handleBulkDedupe}
+            disabled={isDeduping || Boolean(deletingPlaceId)}
+            className="w-full flex items-center justify-center gap-2 h-9 px-4 bg-[#0071e3]/10 hover:bg-[#0071e3]/15 border border-[#0071e3]/20 rounded-apple text-[13px] font-medium text-[#0071e3] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ letterSpacing: '-0.12px' }}
+          >
+            <Layers3 className={`w-4 h-4 ${isDeduping ? 'animate-pulse' : ''}`} />
+            {isDeduping ? 'Đang dọn trùng' : 'Dọn trùng company'}
+          </button>
           <button
             onClick={exportToExcel}
             className="w-full flex items-center justify-center gap-2 h-9 px-4 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border border-[var(--border-color)] rounded-apple text-[13px] font-medium text-secondary hover:text-primary transition-colors"
