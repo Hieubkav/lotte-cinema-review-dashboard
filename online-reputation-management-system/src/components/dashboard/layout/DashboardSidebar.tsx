@@ -496,7 +496,7 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
                           {Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')}
                         </span>
                         <span className="text-[9px] text-tertiary/75 tabular-nums leading-tight">
-                          G {Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} / DB {Number(c.capturedReviews || 0).toLocaleString('vi-VN')}
+                          DB {Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} / G {Number(c.officialTotalReviews || c.total_reviews || 0).toLocaleString('vi-VN')}
                         </span>
                         {!hasData && (
                           <span className="text-[10px] text-tertiary/80 leading-tight">
@@ -513,12 +513,12 @@ export default function DashboardSidebar({ state }: { state: DashboardState }) {
                       title={
                         isDeleting
                           ? `Đang xóa ${shortName}...`
-                          : `Xóa ${shortName} (${Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} Google / ${Number(c.capturedReviews || 0).toLocaleString('vi-VN')} DB)`
+                          : `Xóa ${shortName} (${Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} DB / ${Number(c.officialTotalReviews || c.total_reviews || 0).toLocaleString('vi-VN')} Google)`
                       }
                       aria-label={
                         isDeleting
                           ? `Đang xóa ${shortName}`
-                          : `Xóa ${shortName}, hiện có ${Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} đánh giá Google và ${Number(c.capturedReviews || 0).toLocaleString('vi-VN')} đánh giá đã capture`
+                          : `Xóa ${shortName}, hiện có ${Number(c.currentTotalReviews || 0).toLocaleString('vi-VN')} đánh giá DB capture và ${Number(c.officialTotalReviews || c.total_reviews || 0).toLocaleString('vi-VN')} đánh giá Google`
                       }
                     >
                       <Trash2 className={`h-3.5 w-3.5 ${isDeleting ? 'animate-pulse' : ''}`} />

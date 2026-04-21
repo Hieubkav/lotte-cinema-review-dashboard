@@ -64,6 +64,18 @@ export function useDashboardData(
     return map;
   }, [branchAggregates]);
 
+  const getCapturedAverageRating = (cinema: any) => {
+    if (typeof aggregateMap[cinema.place_id || cinema.placeId || '']?.sentiment === 'number') {
+      return aggregateMap[cinema.place_id || cinema.placeId || '']?.sentiment ?? 0;
+    }
+
+    const reviews = cinema.reviews || [];
+    if (reviews.length === 0) return 0;
+
+    const total = reviews.reduce((sum: number, review: any) => sum + Number(review.rating || 0), 0);
+    return Number((total / reviews.length).toFixed(2));
+  };
+
   // --- Processed Cinemas with Latest Metrics ---
   const cinemasWithLatest = useMemo(() => {
     return cinemas.map(c => {
@@ -71,8 +83,8 @@ export function useDashboardData(
       const pid = c.place_id || c.placeId || '';
       const agg = aggregateMap[pid];
 
-      const currentTotalReviews = c.officialTotalReviews ?? c.total_reviews ?? agg?.count ?? 0;
-      const currentAverageRating = c.officialAvgRating ?? c.avg_rating ?? agg?.rating ?? 0;
+      const currentTotalReviews = c.capturedTotalReviews ?? c.captured_total_reviews ?? c.reviews?.length ?? agg?.count ?? 0;
+      const currentAverageRating = getCapturedAverageRating(c);
       const capturedReviews = c.capturedTotalReviews ?? c.captured_total_reviews ?? c.reviews?.length ?? 0;
 
       return {

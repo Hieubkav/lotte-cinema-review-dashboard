@@ -30,7 +30,7 @@ export default function BranchView({ state }: { state: DashboardState }) {
     {
       label: 'Avg Rating',
       val: (activeCinema as any).currentAverageRating?.toFixed(1) ?? '0.0',
-      sub: 'Official Google',
+      sub: 'Captured reviews',
       icon: Star,
       iconClass: 'fill-amber-500 text-amber-500',
       accent: '#f59e0b',
